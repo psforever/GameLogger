@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Pipes;
@@ -13,14 +14,15 @@ using System.Windows.Forms;
 
 namespace PSCap
 {
-    public partial class Form1 : Form
+    public partial class PSCapMain : Form
     {
         List<string> items = new List<string>();
+        ProcessScanner scanner = new ProcessScanner("PlanetSide");
         volatile bool killThread = false;
         bool followLast = true;
         int loggerId = 0;
 
-        public Form1(int loggerId)
+        public PSCapMain(int loggerId)
         {
             this.loggerId = loggerId;
             InitializeComponent();
@@ -28,6 +30,8 @@ namespace PSCap
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            disableProcessSelection();
+
             listView1.VirtualMode = false;
             listView1.VirtualListSize = 0;
             listView1.View = View.Details;
@@ -43,10 +47,91 @@ namespace PSCap
 
             this.toolStripLoggerID.Text = "Logger ID " + loggerId;
 
-            Task.Factory.StartNew(() =>
+            Task.Factory.StartNew(updateList);
+            scanner.ProcessListUpdate += new ProcessListUpdateHandler(processList_update);
+            scanner.startScanning();
+
+            /*                    this.SafeInvoke(delegate
+                    {
+                        toolStripComboBox1.Items.Clear();
+                        toolStripComboBox1.Enabled = false;
+                        toolStripComboBox1.Items.Add("No instances");
+                        toolStripComboBox1.SelectedIndex = 0;
+                    });
+                }
+                else
+                {
+                    this.SafeInvoke(delegate
+                    {
+                        toolStripComboBox1.Items.Clear();
+                        toolStripComboBox1.Enabled = true;
+                    });
+
+                    foreach (Process p in psProcesses)
+                    {
+                        this.SafeInvoke(delegate
+                        {
+                            toolStripComboBox1.Items.Add(p.ProcessName + " (PID " + p.Id + ")");
+                        */
+        }
+
+        void disableProcessSelection()
+        {
+            this.SafeInvoke(delegate
             {
-                updateList();
+                toolStripComboBox1.Items.Clear();
+                toolStripComboBox1.Enabled = false;
+                toolStripComboBox1.Items.Add("No instances");
+                toolStripComboBox1.SelectedIndex = 0;
+
+                capturePauseButton.Enabled = false;
             });
+        }
+
+        void enableProcessSelection()
+        {
+            this.SafeInvoke(delegate
+            {
+                toolStripComboBox1.Items.Clear();
+                toolStripComboBox1.Enabled = true;
+            });
+        }
+
+        private void processList_update(Process[] list)
+        {
+            if(list.Length == 0)
+            {
+                disableProcessSelection();
+                return;
+            }
+
+            enableProcessSelection();
+
+            foreach (Process p in list)
+            {
+                this.SafeInvoke(delegate
+                {
+                    toolStripComboBox1.Items.Add(new ProcessCollectable(p));
+                });
+            }
+
+            // select the first item as a convienience
+            this.SafeInvoke(f => f.toolStripComboBox1.SelectedIndex = 0);
+        }
+   
+        private class ProcessCollectable
+        {
+            Process process;
+
+            public ProcessCollectable(Process p)
+            {
+                process = p;
+            }
+
+            public override string ToString()
+            {
+                return process.ProcessName + " (PID " + process.Id + ")";
+            }
         }
 
         private void addItem(string item)
@@ -103,6 +188,7 @@ namespace PSCap
                 Console.WriteLine("New connection to pipe server");
                 StreamWriter writer = new StreamWriter(server);
 
+                //reader.Read(buf,
                 /*while (true)
                 {
                     var line = reader.ReadLine();
@@ -111,7 +197,7 @@ namespace PSCap
                 }*/
 
 
-                writer.WriteLine("HEY BUD");
+            writer.WriteLine("HEY BUD");
                 writer.Close();
 
                 /*addItem(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds.ToString());
@@ -178,6 +264,26 @@ namespace PSCap
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             killThread = true;
+        }
+
+        private void toolStripComboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            ToolStripComboBox comboBox = (ToolStripComboBox)sender;
+
+            if(comboBox.SelectedItem == null)
+            {
+                capturePauseButton.Enabled = false;
+                return;
+            }
+
+            capturePauseButton.Enabled = true;
+        }
+
+        private void capturePauseButton_Click(object sender, EventArgs e)
+        {
+            Console.WriteLine("Starting capture for " + (ProcessCollectable)toolStripComboBox1.SelectedItem);
+            //capturePauseButton.Image = Properties.Resources.StatusAnnotations_Stop_16xLG_color;
+            //capturePauseButton.Text = "Capturing...";
         }
     }
 

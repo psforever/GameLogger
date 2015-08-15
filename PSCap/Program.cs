@@ -31,7 +31,7 @@ namespace PSCap
             
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1(loggerId));
+            Application.Run(new PSCapMain(loggerId));
         }
 
         // used to establish a unique logger ID and therefore a unique pipe
