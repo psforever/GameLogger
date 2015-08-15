@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
+using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PSCap
@@ -13,12 +16,13 @@ namespace PSCap
     public partial class Form1 : Form
     {
         List<string> items = new List<string>();
-        Thread adderThread;
         volatile bool killThread = false;
         bool followLast = true;
+        int loggerId = 0;
 
-        public Form1()
+        public Form1(int loggerId)
         {
+            this.loggerId = loggerId;
             InitializeComponent();
         }
 
@@ -37,8 +41,12 @@ namespace PSCap
             listView1.Columns.Add("Event", 100);
             listView1.Columns.Add("Data", 100);
 
-            adderThread = new Thread(updateList);
-            adderThread.Start();
+            this.toolStripLoggerID.Text = "Logger ID " + loggerId;
+
+            Task.Factory.StartNew(() =>
+            {
+                updateList();
+            });
         }
 
         private void addItem(string item)
@@ -73,10 +81,41 @@ namespace PSCap
         private void updateList()
         {
             int i = 0;
+
             while (!killThread)
             {
-                addItem(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds.ToString());
-                i++;
+                NamedPipeServerStream server = null;
+
+                try
+                {
+                    server = new NamedPipeServerStream("PSLogServer"+loggerId);
+                }
+                catch(IOException e)
+                {
+                    MessageBox.Show("Failed to listen on named pipe", "Pipe Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    killThread = true;
+                    Application.Exit();
+                    continue;
+                }
+                
+                server.WaitForConnection();
+                //StreamReader reader = new StreamReader(server);
+                Console.WriteLine("New connection to pipe server");
+                StreamWriter writer = new StreamWriter(server);
+
+                /*while (true)
+                {
+                    var line = reader.ReadLine();
+                    writer.WriteLine(String.Join("", line.Reverse()));
+                    writer.Flush();
+                }*/
+
+
+                writer.WriteLine("HEY BUD");
+                writer.Close();
+
+                /*addItem(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds.ToString());
+                i++;*/
                 //Thread.Sleep(10);
             }
         }
@@ -116,8 +155,7 @@ namespace PSCap
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            //killThread = true;
-            adderThread.Abort();
+            killThread = true;
         }
 
         private void listView1_SelectedIndexChanged(object sender, EventArgs e)
