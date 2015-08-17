@@ -49,6 +49,8 @@ namespace PSCap
         {
             scanner.ProcessListUpdate += new ProcessListUpdateHandler(processList_update);
 
+            captureLogic.AttachedProcessExited += new EventHandler(attachedProcessExited);
+
             // set the logger ID
             this.toolStripLoggerID.Text = "Logger ID " + loggerId;
 
@@ -68,6 +70,26 @@ namespace PSCap
             listView1.Columns.Add("Time", 140);
             listView1.Columns.Add("Event", 100);
             listView1.Columns.Add("Data", 100);
+        }
+
+        private void attachedProcessExited(object o, EventArgs e)
+        {
+            Log.Warning("attached process has exited. Detach forced...");
+            Process p = captureLogic.getAttachedProcess().Process;
+            captureLogic.detach();
+
+            // XXX: this is shit. We have to "stop capture" then detach. Weird state
+            // to be in, but it saves code at breaking some models
+            enterUIState(UIState.Attached);
+            enterUIState(UIState.Detached);
+
+            // TODO: add more messagebox types for capturing/not capturing
+            if(p.ExitCode == 0)
+                MessageBox.Show("The attached process has exited safely. Detach forced.", "Process Exited",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            else
+                MessageBox.Show("The attached process has crashed with exit code " + p.ExitCode + ". Detach forced.", "Process Crashed",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         void disableProcessSelection(DisableProcessSelectionReason reason)

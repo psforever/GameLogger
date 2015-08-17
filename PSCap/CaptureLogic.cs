@@ -19,12 +19,16 @@ namespace PSCap
         Capturing
     }
 
+    
+
     class CaptureLogic
     {
         AttachState attachState = AttachState.Detached;
         CaptureState captureState = CaptureState.NotCapturing;
 
         ProcessCollectable currentProcess;
+
+        public event EventHandler AttachedProcessExited;
 
         public bool isCapturing()
         {
@@ -35,7 +39,14 @@ namespace PSCap
         {
             return attachState == AttachState.Attached;
         }
-        
+
+        public ProcessCollectable getAttachedProcess()
+        {
+            Debug.Assert(attachState == AttachState.Attached, "Tried to get process when not attached");
+
+            return currentProcess;
+        }
+
         public void detach()
         {
             Debug.Assert(attachState == AttachState.Attached, "Tried to detach twice");
@@ -60,6 +71,12 @@ namespace PSCap
             Debug.Assert(attachState == AttachState.Detached, "Must be detached before attaching");
 
             Log.Info("attaching to process {0}", process);
+
+            // begin listening for events related to this process
+            Process p = process.Process;
+
+            p.EnableRaisingEvents = true;
+            p.Exited += new EventHandler(AttachedProcessExited);
 
             currentProcess = process;
             attachState = AttachState.Attached;
