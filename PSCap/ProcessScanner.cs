@@ -7,11 +7,13 @@ using System.Threading.Tasks;
 namespace PSCap
 {
     delegate void ProcessListUpdateHandler(Process[] list);
+
     class ProcessScanner
     {
-        const int REFRESH_RATE = 2000;
+        const int REFRESH_RATE = 1000;
 
         string targetProcessName = "";
+        bool taskStarted = false;
         Task scanTaskObj = null;
         CancellationTokenSource tokenSource = null;
 
@@ -25,31 +27,37 @@ namespace PSCap
 
         public void startScanning()
         {
-            if (scanTaskObj != null)
+            if (taskStarted)
                 return;
 
+            taskStarted = true;
             tokenSource = new CancellationTokenSource();
             scanTaskObj = Task.Factory.StartNew(() => scanTask(tokenSource.Token), tokenSource.Token);
         }
 
         public void stopScanning()
         {
-            if(tokenSource != null)
-            {
-                tokenSource.Cancel();
-                scanTaskObj.Wait();
-                tokenSource = null;
-            }
+            if (!taskStarted)
+                return;
+            
+            tokenSource.Cancel();
+            taskStarted = false;
         }
 
         private void scanTask(CancellationToken ct)
         {
+            Log.Debug("ProcessScanner started for " + targetProcessName);
+
             int lastProcessesLength = -1;
             HashSet<int> curProcessSet = new HashSet<int>();
 
             while (!ct.IsCancellationRequested)
             {
                 Process[] psProcesses = Process.GetProcessesByName(targetProcessName);
+                HashSet<int> newProcessSet = new HashSet<int>();
+
+                foreach (Process p in psProcesses)
+                    newProcessSet.Add(p.Id);
 
                 if (psProcesses.Length != lastProcessesLength)
                 {
@@ -58,45 +66,22 @@ namespace PSCap
                 else
                 {
                     // verify that all matched pids were still found, else update the list
-
-                    Thread.Sleep(REFRESH_RATE);
-                    continue;
-                }
-
-                ProcessListUpdate.Invoke(psProcesses);
-
-                //Console.WriteLine("Got " + psProcesses.Length + " processes");
-
-                if (psProcesses.Length == 0)
-                {
-  
-                }
-                else
-                {
-
-                    foreach (Process p in psProcesses)
+                    if (curProcessSet.SetEquals(newProcessSet))
                     {
-                       
+                        Thread.Sleep(REFRESH_RATE);
+                        continue;
                     }
                 }
 
+                Log.Debug("ProcessScanner got new PID set");
+
+                curProcessSet = newProcessSet;
+                ProcessListUpdate.Invoke(psProcesses);
+
                 Thread.Sleep(REFRESH_RATE);
             }
+
+            Log.Debug("ProcessScanner stopped");
         }
-
-        public void scanOnce()
-        {
-
-        }
-
-        /*public int getSelectedPID()
-        {
-
-        }
-
-        public Process getSelectedProcess()
-        {
-
-        }*/
     }
 }
