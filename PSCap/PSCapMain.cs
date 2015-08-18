@@ -79,7 +79,7 @@ namespace PSCap
             captureLogic.detach();
 
             // XXX: this is shit. We have to "stop capture" then detach. Weird state
-            // to be in, but it saves code at breaking some models
+            // to be in, but it saves code at the expense of breaking some models
             enterUIState(UIState.Attached);
             enterUIState(UIState.Detached);
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -78,6 +79,11 @@ namespace PSCap
             p.EnableRaisingEvents = true;
             p.Exited += new EventHandler(AttachedProcessExited);
 
+            if(DLLInjector.Inject(p, Path.Combine(Environment.CurrentDirectory, "pslog.dll")) != DllInjectionResult.Success)
+            {
+                Log.Error("DllInjection failed");
+            }
+
             currentProcess = process;
             attachState = AttachState.Attached;
         }
@@ -85,7 +91,7 @@ namespace PSCap
         public void capture()
         {
             Debug.Assert(captureState == CaptureState.NotCapturing &&
-                attachState == AttachState.Attached, "Must be attached before capturing");
+                attachState == AttachState.Attached, "Must be attached and not capturing already before capturing");
 
             Log.Info("capturing data from process {0}", currentProcess);
 

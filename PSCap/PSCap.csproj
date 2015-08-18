@@ -48,6 +48,7 @@
   <ItemGroup>
     <Compile Include="CaptureFile.cs" />
     <Compile Include="CaptureLogic.cs" />
+    <Compile Include="DLLInjector.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="ProcessCollectable.cs" />
     <Compile Include="ProcessScanner.cs" />
