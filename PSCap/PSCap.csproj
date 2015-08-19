@@ -50,6 +50,7 @@
     <Compile Include="CaptureLogic.cs" />
     <Compile Include="DLLInjector.cs" />
     <Compile Include="Log.cs" />
+    <Compile Include="PipeServer.cs" />
     <Compile Include="ProcessCollectable.cs" />
     <Compile Include="ProcessScanner.cs" />
     <Compile Include="ListViewEx.cs">

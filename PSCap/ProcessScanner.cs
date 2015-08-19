@@ -6,11 +6,9 @@ using System.Threading.Tasks;
 
 namespace PSCap
 {
-    delegate void ProcessListUpdateHandler(Process[] list);
-
     class ProcessScanner
     {
-        const int REFRESH_RATE = 1000;
+        readonly TimeSpan REFRESH_RATE = TimeSpan.FromMilliseconds(1000);
 
         string targetProcessName = "";
         bool taskStarted = false;
@@ -18,7 +16,7 @@ namespace PSCap
         CancellationTokenSource tokenSource = null;
 
         // call these on a new process list
-        public event ProcessListUpdateHandler ProcessListUpdate;
+        public event EventHandler<Process []> ProcessListUpdate;
 
         public ProcessScanner(string processName)
         {
@@ -28,7 +26,10 @@ namespace PSCap
         public void startScanning()
         {
             if (taskStarted)
-                return;
+            {
+                // unsure if this behavior is a good idea
+                stopScanning();
+            }
 
             taskStarted = true;
             tokenSource = new CancellationTokenSource();
@@ -76,7 +77,7 @@ namespace PSCap
                 Log.Debug("ProcessScanner got new PID set");
 
                 curProcessSet = newProcessSet;
-                ProcessListUpdate.Invoke(psProcesses);
+                ProcessListUpdate.Invoke(this, psProcesses);
 
                 Thread.Sleep(REFRESH_RATE);
             }

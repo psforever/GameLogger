@@ -25,14 +25,17 @@ namespace PSCap
         enum UIState
         {
             Detached,
+            Detaching,
             Attached,
+            Attaching,
             Capturing,
         }
 
         List<string> items = new List<string>();
         const string NO_INSTANCE_PLACEHOLDER = "No instances";
         ProcessScanner scanner = new ProcessScanner("PlanetSide");
-        CaptureLogic captureLogic = new CaptureLogic(); // manages the state of the logger
+        // manages the state of the logger and the transitions from detached attached etc
+        CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, "pslog.dll"); 
         CaptureFile captureFile;
         int lastSelectedInstanceIndex = 0;
         //volatile bool killThread = false;
@@ -47,8 +50,7 @@ namespace PSCap
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            scanner.ProcessListUpdate += new ProcessListUpdateHandler(processList_update);
-
+            scanner.ProcessListUpdate += new EventHandler<Process []>(processList_update);
             captureLogic.AttachedProcessExited += new EventHandler(attachedProcessExited);
 
             // set the logger ID
@@ -74,6 +76,12 @@ namespace PSCap
 
         private void attachedProcessExited(object o, EventArgs e)
         {
+            if (!captureLogic.isAttached())
+            {
+                Log.Info("Process exited but we weren't attached. Don't care");
+                return;
+            }
+
             Log.Warning("attached process has exited. Detach forced...");
             Process p = captureLogic.getAttachedProcess().Process;
             captureLogic.detach();
@@ -88,7 +96,8 @@ namespace PSCap
                 MessageBox.Show("The attached process has exited safely. Detach forced.", "Process Exited",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             else
-                MessageBox.Show("The attached process has crashed with exit code " + p.ExitCode + ". Detach forced.", "Process Crashed",
+                MessageBox.Show(string.Format("The attached process has crashed with exit code 0x{0:X}. Detach forced.", p.ExitCode),
+                    "Process Crashed",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
@@ -126,7 +135,7 @@ namespace PSCap
             });
         }
 
-        private void processList_update(Process[] list)
+        private void processList_update(object from, Process[] list)
         {
             this.SafeInvoke(delegate
             {
@@ -196,6 +205,7 @@ namespace PSCap
                         capturePauseButton.Enabled = false;
 
                         toolStripAttachButton.Text = "Attach";
+                        toolStripAttachButton.Enabled = true;
                         // in the detached state, the scanner task and selection callback control
                         // the enabled state of the Attach/Detach button
 
@@ -207,8 +217,18 @@ namespace PSCap
                         scanner.startScanning();
                     });
                     break;
+                case UIState.Detaching:
+                    Log.Info("UIState Detaching");
+
+                    this.SafeInvoke(delegate
+                    {
+                        toolStripAttachButton.Text = "Detaching";
+                        toolStripAttachButton.Enabled = false;
+                    });
+                    break;
                 case UIState.Attached:
                     Log.Info("UIState Attached");
+
                     this.SafeInvoke(delegate
                     {
                         // no need to scan anymore
@@ -230,6 +250,15 @@ namespace PSCap
                         setStatus("Ready to capture");
                     });
                     break;
+                case UIState.Attaching:
+                    Log.Info("UIState Attaching");
+
+                    this.SafeInvoke(delegate
+                    {
+                        toolStripAttachButton.Text = "Attaching";
+                        toolStripAttachButton.Enabled = false;
+                    });
+                    break;
                 case UIState.Capturing:
                     Log.Info("UIState Capturing");
 
@@ -237,7 +266,8 @@ namespace PSCap
                     {
                         capturePauseButton.Image = Properties.Resources.StatusAnnotations_Stop_16xLG_color;
                         capturePauseButton.Text = "Capturing...";
-                        
+
+                        toolStripAttachButton.Text = "Detach";
                         toolStripAttachButton.Enabled = false;
 
                         // status bar
@@ -256,35 +286,7 @@ namespace PSCap
                 listView1.EnsureVisible(listView1.Items.Count - 1);
             });
         }
-
-        /*private void updateList()
-        {
-            while (!killThread)
-            {
-                NamedPipeServerStream server = null;
-
-                try
-                {
-                    server = new NamedPipeServerStream("PSLogServer"+loggerId);
-                }
-                catch(IOException e)
-                {
-                    MessageBox.Show("Failed to listen on named pipe", "Pipe Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    killThread = true;
-                    Application.Exit();
-                    continue;
-                }
-                
-                server.WaitForConnection();
-                //StreamReader reader = new StreamReader(server);
-                Console.WriteLine("New connection to pipe server");
-                StreamWriter writer = new StreamWriter(server);
-
-                writer.WriteLine("HEY BUD");
-                writer.Close();
-            }
-        }*/
-
+        
         private void listView1_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
             //A cache miss, so create a new ListViewItem and pass it back. 
@@ -376,15 +378,33 @@ namespace PSCap
         {
             if(captureLogic.isAttached())
             {
-                captureLogic.detach();
-                enterUIState(UIState.Detached);
+                enterUIState(UIState.Detaching);
+
+                Task.Factory.StartNew(() =>
+                {
+                    Thread.Sleep(500);
+                    captureLogic.detach();
+                    enterUIState(UIState.Detached);
+                });
             }
             else
             {
                 if (isProcessSelected())
                 {
-                    captureLogic.attach((ProcessCollectable)toolStripInstance.SelectedItem);
-                    enterUIState(UIState.Attached);
+                    enterUIState(UIState.Attaching);
+
+                    captureLogic.attach((ProcessCollectable)toolStripInstance.SelectedItem,
+                        (okay, attachResult, message) =>
+                        {
+                            if (okay)
+                            {
+                                enterUIState(UIState.Attached);
+                                return;
+                            }
+
+                            enterUIState(UIState.Detached);
+                            MessageBox.Show(message, "Failed to Attach", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        });
                 }
                 else
                     Debug.Assert(false, "Attemped to attach without first selecting a process");

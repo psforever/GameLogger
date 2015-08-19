@@ -20,7 +20,17 @@ namespace PSCap
         Capturing
     }
 
-    
+    enum AttachResult
+    {
+        Success,
+        DllNoProcess,
+        DllInjectionFailure,
+        DllMissing,
+        DllConnection,
+        PipeServerStartup,
+        DllHandshake,
+        UnknownFailure,
+    }
 
     class CaptureLogic
     {
@@ -28,8 +38,19 @@ namespace PSCap
         CaptureState captureState = CaptureState.NotCapturing;
 
         ProcessCollectable currentProcess;
+        PipeServer pipeServer;
+        string dllName;
+        string pipeServerName;
 
         public event EventHandler AttachedProcessExited;
+
+        public CaptureLogic(string pipeServerName, string dllName)
+        {
+            this.pipeServerName = pipeServerName;
+            this.dllName = dllName;
+
+            pipeServer = new PipeServer(pipeServerName);
+        }
 
         public bool isCapturing()
         {
@@ -64,10 +85,11 @@ namespace PSCap
                 Log.Info("wasn't capturing...going ahead with detach");
             }
 
+            pipeServer.stop();
             attachState = AttachState.Detached;
         }
 
-        public void attach(ProcessCollectable process)
+        public void attach(ProcessCollectable process, Action <bool, AttachResult, string> callback)
         {
             Debug.Assert(attachState == AttachState.Detached, "Must be detached before attaching");
 
@@ -79,13 +101,89 @@ namespace PSCap
             p.EnableRaisingEvents = true;
             p.Exited += new EventHandler(AttachedProcessExited);
 
-            if(DLLInjector.Inject(p, Path.Combine(Environment.CurrentDirectory, "pslog.dll")) != DllInjectionResult.Success)
+            try
             {
-                Log.Error("DllInjection failed");
+                bool pipeServerStartRes = pipeServer.start();
+
+                if(!pipeServerStartRes)
+                {
+                    callback.Invoke(false, AttachResult.PipeServerStartup,
+                        string.Format("Failed to start the pipe server for '{0}'. Reason: unknown", pipeServer.PipeName));
+                    return;
+                }
+            }
+            catch (IOException e)
+            {
+                callback.Invoke(false, AttachResult.PipeServerStartup,
+                    string.Format("Failed to start the pipe server for '{0}'. Reason: {1}", pipeServer.PipeName, e.Message));
+                return;
             }
 
-            currentProcess = process;
-            attachState = AttachState.Attached;
+            DllInjectionResult dllResult = DLLInjector.Inject(p, Path.Combine(Environment.CurrentDirectory, "pslog.dll"));
+
+            // DLL injection error handling;
+            switch(dllResult)
+            {
+                case DllInjectionResult.Success:
+                    break;
+                case DllInjectionResult.DllNotFound:
+                    pipeServer.stop();
+
+                    callback.Invoke(false, AttachResult.DllMissing,
+                        string.Format("Failed to inject {0} in to {1} because {0} was missing from the current directory.", dllName, process));
+                    return;
+                case DllInjectionResult.GameProcessNotFound:
+                    pipeServer.stop();
+
+                    callback.Invoke(false, AttachResult.DllNoProcess,
+                        string.Format("Failed to inject {0} in to {1} because the process died before we could inject!", dllName, process));
+                    return;
+                case DllInjectionResult.InjectionFailed:
+                    pipeServer.stop();
+
+                    callback.Invoke(false, AttachResult.DllInjectionFailure,
+                        string.Format("Failed to inject {0} in to {1}. Possible bad DLL or process crash.", dllName, process));
+                    return;
+            }
+
+            // fire off our attach task
+            pipeServer.waitForConnection((okay) =>
+            {
+                if(!okay)
+                {
+                    pipeServer.stop();
+
+                    Log.Info("Failed to receive a pipe connection before timeout");
+                    callback.Invoke(false, AttachResult.DllConnection,
+                        string.Format("Failed to receive a pipe connection before timeout. This could indicate a DLL crash or hang"));
+                }
+                else
+                {
+                    Log.Info("Got pipe connection. Now communicating with DLL");
+
+                    pipeServer.readMessage((result, message) =>
+                    {
+                        if(result)
+                        {
+                            Log.Info("Read message of size " + message.Count);
+
+                            // success case!
+                            callback.Invoke(true, AttachResult.Success, "");
+                            currentProcess = process;
+                            attachState = AttachState.Attached;
+                        }
+                        else
+                        {
+                            pipeServer.stop();
+
+                            Log.Info("Failed to read message from DLL");
+                            callback.Invoke(false, AttachResult.DllHandshake, "DLL did not complete the correct handshake");
+                        }
+                        
+                    }, TimeSpan.FromMilliseconds(1000));
+                }
+
+            }, TimeSpan.FromMilliseconds(1000));
         }
 
         public void capture()

@@ -10,7 +10,7 @@ namespace PSCap
     static class Program
     {
         static Mutex loggerMutex = null;
-        static int loggerId = -1;
+        public static int LoggerId { get; set; }
         const int MAX_LOGGERS = 5;
 
         /// <summary>
@@ -31,7 +31,7 @@ namespace PSCap
             
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new PSCapMain(loggerId));
+            Application.Run(new PSCapMain(LoggerId));
         }
 
         // used to establish a unique logger ID and therefore a unique pipe
@@ -49,13 +49,15 @@ namespace PSCap
                 if (createdNew)
                 {
                     loggerMutex = mutex; // dont let it be disposed
-                    loggerId = i;
+                    LoggerId = i;
                     return true;
                 }
 
                 if (mutex != null)
                     mutex.Close();
             }
+
+            LoggerId = -1;
 
             return false;
         }

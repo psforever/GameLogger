@@ -9,21 +9,16 @@ namespace PSCap
 {
     class ProcessCollectable
     {
-        Process process;
+        public Process Process { get; }
 
         public ProcessCollectable(Process p)
         {
-            process = p;
-        }
-
-        public Process Process
-        {
-            get { return process; }
+            Process = p;
         }
 
         public override string ToString()
         {
-            return process.ProcessName + " (PID " + process.Id + ")";
+            return Process.ProcessName + " (PID " + Process.Id + ")";
         }
     }
 }
