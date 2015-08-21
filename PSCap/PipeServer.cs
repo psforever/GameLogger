@@ -16,7 +16,7 @@ namespace PSCap
         {
             var timeoutCancellationTokenSource = new CancellationTokenSource();
 
-            var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
+            var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token)).ConfigureAwait(false);
             if (completedTask == task)
             {
                 timeoutCancellationTokenSource.Cancel();
@@ -58,79 +58,104 @@ namespace PSCap
             return true;
         }
 
-        public void waitForConnection(Action<bool> callback, TimeSpan timeout)
+        public bool waitForConnection(TimeSpan timeout)
         {
-            Task.Factory.StartNew(() =>
+            try
             {
-                try
+                Log.Info("starting wait");
+                var theTask = Task<bool>.Factory.StartNew(() =>
                 {
-                    Log.Info("starting wait");
-                    Task<bool>.Factory.StartNew(() =>
-                    {
-                        pipeServer.WaitForConnection();
-                        return true;
-                    }).TimeoutAfter(timeout).Wait();
+                    pipeServer.WaitForConnection();
+                    return true;
+                }).TimeoutAfter(timeout);
 
-                    callback.Invoke(true);
-                }
-                catch(AggregateException e)
+                theTask.Wait();
+                theTask.Dispose();
+
+                return true;
+            }
+            catch(AggregateException e)
+            {
+                foreach(Exception ee in e.InnerExceptions)
                 {
-                    foreach(Exception ee in e.InnerExceptions)
-                    {
-                        Log.Info("Got timeout exception: " + ee.Message);
-                    }
-                    
-                    callback.Invoke(false);
+                    Log.Info("Got timeout exception: " + ee.Message);
                 }
-            });
+
+                return false;
+            }
         }
 
         public void readMessage(Action<bool, List<byte>> callback, TimeSpan timeout)
         {
-            Task.Factory.StartNew(() =>
+            if (!serverStarted)
+                throw new InvalidOperationException("Tried to read message from a disconnected pipe");
+
+            try
             {
-                try
+                Log.Info("starting read");
+
+                List<byte> outBuf = new List<byte>(100);
+                byte[] tmpBuf = new byte[100]; 
+                int messageSize = 0;
+
+                Task<bool>.Factory.StartNew(() =>
                 {
-                    Log.Info("starting read");
-
-                    List<byte> outBuf = new List<byte>(100);
-                    byte[] tmpBuf = new byte[100]; 
-                    int messageSize = 0;
-
-                    Task<bool>.Factory.StartNew(() =>
+                    do
                     {
-                        Log.Info("BB");
+                        int readAmount = pipeServer.Read(tmpBuf, 0, tmpBuf.Length);
 
-                        do
-                        {
-                            int readAmount = pipeServer.Read(tmpBuf, 0, tmpBuf.Length);
+                        if (readAmount == 0)
+                            return false;
 
-                            if (readAmount == 0)
-                                return false;
+                        outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(tmpBuf, 0, readAmount)));
+                        messageSize += readAmount;
+                    } while (!pipeServer.IsMessageComplete);
 
-                            outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(tmpBuf, 0, readAmount)));
-                            messageSize += readAmount;
-                        } while (!pipeServer.IsMessageComplete);
+                    return true;
+                }).TimeoutAfter(timeout).Wait();
 
-                        Log.Info("EE");
-                        return true;
-                    }).TimeoutAfter(timeout).Wait();
-
-                    if (messageSize > 0)
-                        callback.Invoke(true, outBuf);
-                    else
-                        callback.Invoke(false, null);
-                }
-                catch (AggregateException e)
+                if (messageSize > 0)
+                    callback(true, outBuf);
+                else
+                    callback(false, null);
+            }
+            catch (AggregateException e)
+            {
+                foreach (Exception ee in e.InnerExceptions)
                 {
-                    foreach (Exception ee in e.InnerExceptions)
-                    {
-                        Log.Info("Got timeout exception: " + ee.Message);
-                    }
-
-                    callback.Invoke(false, null);
+                    Log.Info("Got timeout exception: " + ee.Message);
                 }
-            });
+
+                callback(false, null);
+            }
+        }
+
+        public void writeMessage(byte[] message, Action<bool> callback, TimeSpan timeout)
+        {
+            if (!serverStarted)
+                throw new InvalidOperationException("Tried to write message to a disconnected pipe");
+
+            try
+            {
+                Log.Info("starting write");
+
+                Task<bool>.Factory.StartNew(() =>
+                {
+                    pipeServer.Write(message, 0, message.Length);
+                    return true;
+                }).TimeoutAfter(timeout).Wait();
+
+                callback(true);
+            }
+            catch (AggregateException e)
+            {
+                foreach (Exception ee in e.InnerExceptions)
+                {
+                    Log.Info("Got timeout exception: " + ee.Message);
+                }
+
+                callback(false);
+            }
         }
 
         public class SegmentEnumerable : IEnumerable<byte>, IEnumerable
@@ -202,7 +227,9 @@ namespace PSCap
                 if(pipeServer.IsConnected)
                     pipeServer.Disconnect();
 
+                pipeServer.Close();
                 pipeServer.Dispose();
+                pipeServer = null;
                 serverStarted = false;
             }
         }

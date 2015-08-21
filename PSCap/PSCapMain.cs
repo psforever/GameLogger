@@ -89,6 +89,7 @@ namespace PSCap
             // XXX: this is shit. We have to "stop capture" then detach. Weird state
             // to be in, but it saves code at the expense of breaking some models
             enterUIState(UIState.Attached);
+            enterUIState(UIState.Detaching);
             enterUIState(UIState.Detached);
 
             // TODO: add more messagebox types for capturing/not capturing

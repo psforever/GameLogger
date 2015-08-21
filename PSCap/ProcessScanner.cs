@@ -77,7 +77,7 @@ namespace PSCap
                 Log.Debug("ProcessScanner got new PID set");
 
                 curProcessSet = newProcessSet;
-                ProcessListUpdate.Invoke(this, psProcesses);
+                ProcessListUpdate(this, psProcesses);
 
                 Thread.Sleep(REFRESH_RATE);
             }

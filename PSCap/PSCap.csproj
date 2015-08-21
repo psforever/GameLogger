@@ -46,9 +46,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BitStream.cs" />
     <Compile Include="CaptureFile.cs" />
     <Compile Include="CaptureLogic.cs" />
+    <Compile Include="DllHandshake.cs" />
     <Compile Include="DLLInjector.cs" />
+    <Compile Include="DllMessage.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="PipeServer.cs" />
     <Compile Include="ProcessCollectable.cs" />
