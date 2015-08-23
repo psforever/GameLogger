@@ -35,7 +35,8 @@ namespace PSCap
         const string NO_INSTANCE_PLACEHOLDER = "No instances";
         ProcessScanner scanner = new ProcessScanner("PlanetSide");
         // manages the state of the logger and the transitions from detached attached etc
-        CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, "pslog.dll"); 
+        //CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, Path.Combine(Environment.CurrentDirectory, "pslog.dll"));
+        CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, "C:\\Users\\chord\\Documents\\code\\psemu\\src\\tools\\pslog\\bin\\Debug\\pslog.dll" );
         CaptureFile captureFile;
         int lastSelectedInstanceIndex = 0;
         //volatile bool killThread = false;
@@ -114,7 +115,9 @@ namespace PSCap
                         toolStripInstance.Enabled = false;
                         toolStripInstance.Items.Add(NO_INSTANCE_PLACEHOLDER);
                         toolStripInstance.SelectedIndex = 0;
+#if !WITHOUT_GAME
                         toolStripAttachButton.Enabled = false;
+#endif
                     });
                     break;
                 case DisableProcessSelectionReason.Attached:
@@ -323,7 +326,7 @@ namespace PSCap
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            //killThread = true;
+            // TODO: handle the cases where we are attached, capturing, or have an unsaved capture
         }
 
         private void listView1_SelectedIndexChanged(object sender, EventArgs e)
@@ -370,9 +373,13 @@ namespace PSCap
         // guard against any strange behavior
         private bool isProcessSelected()
         {
+#if !WITHOUT_GAME
             return toolStripInstance.SelectedItem != null &&
                 toolStripInstance.Enabled &&
                 toolStripInstance.SelectedItem.ToString() != NO_INSTANCE_PLACEHOLDER;
+#else
+            return true;
+#endif
         }
 
         private void toolStripAttachButton_Click(object sender, EventArgs e)
@@ -394,7 +401,20 @@ namespace PSCap
                 {
                     enterUIState(UIState.Attaching);
 
-                    captureLogic.attach((ProcessCollectable)toolStripInstance.SelectedItem,
+#if !WITHOUT_GAME
+                    ProcessCollectable targetProcess = toolStripInstance.SelectedItem as ProcessCollectable;
+#else
+                    ProcessCollectable targetProcess = new ProcessCollectable(Process.GetCurrentProcess());
+#endif
+
+                    if (targetProcess == null)
+                    {
+                        MessageBox.Show("Target process target was NULL", "Unknown Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        enterUIState(UIState.Detached);
+                        return;
+                    }
+
+                    captureLogic.attach(targetProcess,
                         (okay, attachResult, message) =>
                         {
                             if (okay)
@@ -404,7 +424,27 @@ namespace PSCap
                             }
 
                             enterUIState(UIState.Detached);
-                            MessageBox.Show(message, "Failed to Attach", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                            if (attachResult == AttachResult.PipeServerStartup)
+                            {
+                                DialogResult res = MessageBox.Show(message + Environment.NewLine + "Would you like to end the offending process?"
+                                    , "Failed to Attach", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
+
+                                if (res == DialogResult.Yes)
+                                {
+                                    targetProcess.Process.Refresh();
+
+                                    if(!targetProcess.Process.HasExited)
+                                    {
+                                        Log.Info("Sending close to process {0}", targetProcess);
+                                        targetProcess.Process.CloseMainWindow();
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                MessageBox.Show(message, "Failed to Attach", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
                         });
                 }
                 else

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Linq;
@@ -10,25 +11,6 @@ using System.Threading.Tasks;
 
 namespace PSCap
 {
-    public static class TaskExtensions
-    {
-        public static async Task<TResult> TimeoutAfter<TResult>(this Task<TResult> task, TimeSpan timeout)
-        {
-            var timeoutCancellationTokenSource = new CancellationTokenSource();
-
-            var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token)).ConfigureAwait(false);
-            if (completedTask == task)
-            {
-                timeoutCancellationTokenSource.Cancel();
-                return await task;
-            }
-            else
-            {
-                throw new TimeoutException("The operation has timed out.");
-            }
-        }
-    }
-
     class PipeServer
     {
         NamedPipeServerStream pipeServer;
@@ -42,20 +24,47 @@ namespace PSCap
 
         public bool start()
         {
-            if (serverStarted)
-            {
-                Log.Warning("Tried to start the pipe server twice");
-                return true;
-            }
+            Debug.Assert(!serverStarted, "Tried to start the pipe server twice");
+            Debug.Assert(pipeServer == null, "Pipe server instance is not null");
 
             // callee should handle exceptions
-            NamedPipeServerStream server = new NamedPipeServerStream(PipeName,
-                PipeDirection.InOut, 1, PipeTransmissionMode.Message);
-                
-            pipeServer = server;
+            pipeServer = new NamedPipeServerStream(PipeName,
+                PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
 
             serverStarted = true;
             return true;
+        }
+
+        public void stop()
+        {
+            Debug.Assert(serverStarted, "Pipe server cannot be stopped as it wasn't running");
+
+            pipeServer.Close();
+            pipeServer.Dispose();
+            pipeServer = null;
+            serverStarted = false;
+        }
+
+        public void stopBlocking()
+        {
+            if (serverStarted)
+            {
+                Log.Warning("stopping pipe server in a blocking way");
+
+                if (pipeServer.IsConnected)
+                    pipeServer.Disconnect();
+
+                pipeServer.Close();
+                pipeServer.Dispose();
+                pipeServer = null;
+                serverStarted = false;
+            }
+        }
+
+        public void restart()
+        {
+            stop();
+            start();
         }
 
         public bool waitForConnection(TimeSpan timeout)
@@ -63,24 +72,23 @@ namespace PSCap
             try
             {
                 Log.Info("starting wait");
-                var theTask = Task<bool>.Factory.StartNew(() =>
-                {
-                    pipeServer.WaitForConnection();
-                    return true;
-                }).TimeoutAfter(timeout);
 
-                theTask.Wait();
-                theTask.Dispose();
+                var asyncResult = pipeServer.BeginWaitForConnection((res) => { Log.Info("sasdfa"); }, this);
+
+                if(asyncResult.AsyncWaitHandle.WaitOne(timeout))
+                {
+                    pipeServer.EndWaitForConnection(asyncResult);
+                }
+                else
+                {
+                    throw new TimeoutException("connection wait timed out");
+                }
 
                 return true;
             }
-            catch(AggregateException e)
+            catch(TimeoutException e)
             {
-                foreach(Exception ee in e.InnerExceptions)
-                {
-                    Log.Info("Got timeout exception: " + ee.Message);
-                }
-
+                Log.Info("Got timeout exception: " + e.Message);
                 return false;
             }
         }
@@ -92,39 +100,37 @@ namespace PSCap
 
             try
             {
-                Log.Info("starting read");
-
                 List<byte> outBuf = new List<byte>(100);
-                byte[] tmpBuf = new byte[100]; 
+                
                 int messageSize = 0;
+                byte[] tmpBuf = new byte[100];
 
-                Task<bool>.Factory.StartNew(() =>
+                do
                 {
-                    do
-                    {
-                        int readAmount = pipeServer.Read(tmpBuf, 0, tmpBuf.Length);
+                    int readAmount = 0;
+                    var asyncResult = pipeServer.BeginRead(tmpBuf, 0, tmpBuf.Length, null, null);
 
-                        if (readAmount == 0)
-                            return false;
+                    if (asyncResult.AsyncWaitHandle.WaitOne(timeout))
+                        readAmount = pipeServer.EndRead(asyncResult);
+                    else
+                        throw new TimeoutException("read wait timed out");
 
-                        outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(tmpBuf, 0, readAmount)));
-                        messageSize += readAmount;
-                    } while (!pipeServer.IsMessageComplete);
+                    if (readAmount == 0)
+                        break;
 
-                    return true;
-                }).TimeoutAfter(timeout).Wait();
+                    outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(tmpBuf, 0, readAmount)));
+                    messageSize += readAmount;
+
+                } while (!pipeServer.IsMessageComplete);
 
                 if (messageSize > 0)
                     callback(true, outBuf);
                 else
                     callback(false, null);
             }
-            catch (AggregateException e)
+            catch (TimeoutException e)
             {
-                foreach (Exception ee in e.InnerExceptions)
-                {
-                    Log.Info("Got timeout exception: " + ee.Message);
-                }
+                Log.Info("Got timeout exception: " + e.Message);
 
                 callback(false, null);
             }
@@ -137,22 +143,18 @@ namespace PSCap
 
             try
             {
-                Log.Info("starting write");
+                var asyncResult =  pipeServer.BeginWrite(message, 0, message.Length, null, null);
 
-                Task<bool>.Factory.StartNew(() =>
-                {
-                    pipeServer.Write(message, 0, message.Length);
-                    return true;
-                }).TimeoutAfter(timeout).Wait();
+                if (asyncResult.AsyncWaitHandle.WaitOne(timeout))
+                    pipeServer.EndWrite(asyncResult);
+                else
+                    throw new TimeoutException("write wait timed out");
 
                 callback(true);
             }
-            catch (AggregateException e)
+            catch (TimeoutException e)
             {
-                foreach (Exception ee in e.InnerExceptions)
-                {
-                    Log.Info("Got timeout exception: " + ee.Message);
-                }
+                Log.Info("Got timeout exception: " + e.Message);
 
                 callback(false);
             }
@@ -218,26 +220,6 @@ namespace PSCap
                     throw new NotImplementedException();
                 }
             }
-        }
-
-        public void stop()
-        {
-            if(serverStarted)
-            {
-                if(pipeServer.IsConnected)
-                    pipeServer.Disconnect();
-
-                pipeServer.Close();
-                pipeServer.Dispose();
-                pipeServer = null;
-                serverStarted = false;
-            }
-        }
-
-        public void restart()
-        {
-            stop();
-            start();
         }
     }
 }

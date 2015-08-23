@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PSCap
 {
@@ -88,6 +84,10 @@ namespace PSCap
             }
 
             pipeServer.stop();
+            currentProcess.Process.Close();
+            //currentProcess.Process.Dispose();
+            //currentProcess = null;
+
             attachState = AttachState.Detached;
         }
 
@@ -96,12 +96,6 @@ namespace PSCap
             Debug.Assert(attachState == AttachState.Detached, "Must be detached before attaching");
 
             Log.Info("attaching to process {0}", process);
-
-            // begin listening for events related to this process
-            Process p = process.Process;
-
-            p.EnableRaisingEvents = true;
-            p.Exited += new EventHandler(AttachedProcessExited);
 
             try
             {
@@ -121,7 +115,8 @@ namespace PSCap
                 return;
             }
 
-            DllInjectionResult dllResult = DLLInjector.Inject(p, Path.Combine(Environment.CurrentDirectory, "pslog.dll"));
+#if !WITHOUT_GAME
+            DllInjectionResult dllResult = DLLInjector.Inject(process.Process, dllName);
 
             // DLL injection error handling;
             switch(dllResult)
@@ -147,6 +142,7 @@ namespace PSCap
                         string.Format("Failed to inject {0} in to {1}. Possible bad DLL or process crash.", dllName, process));
                     return;
             }
+#endif
 
             DllHandshake.process(pipeServer, process, (result, attachResult, message) =>
             {
@@ -154,6 +150,12 @@ namespace PSCap
                 {
                     currentProcess = process;
                     attachState = AttachState.Attached;
+
+                    // begin listening for events related to this process
+                    Process p = process.Process;
+
+                    p.EnableRaisingEvents = true;
+                    p.Exited += new EventHandler(AttachedProcessExited);
                 }
                 else
                 {

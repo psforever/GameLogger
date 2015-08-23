@@ -68,10 +68,27 @@ namespace PSCap
 
             return true;
         }
+
+        public List<byte> copyRest()
+        {
+            if (sizeLeft() == 0)
+                return new List<byte>();
+
+            byte[] newCopy = new byte[sizeLeft()];
+
+            Array.ConstrainedCopy(data, position(), newCopy, 0, sizeLeft());
+
+            return new List<byte>(newCopy);
+        }
     }
 
     static class BitOps
     {
+        public static bool ReadBool(BitStream stream)
+        {
+            return Convert.ToBoolean(ReadByte(stream));
+        }
+
         public static byte ReadByte(BitStream stream)
         {
             if(stream.isEnd())
