@@ -71,9 +71,7 @@ namespace PSCap
         {
             try
             {
-                Log.Info("starting wait");
-
-                var asyncResult = pipeServer.BeginWaitForConnection((res) => { Log.Info("sasdfa"); }, this);
+                var asyncResult = pipeServer.BeginWaitForConnection(null, this);
 
                 if(asyncResult.AsyncWaitHandle.WaitOne(timeout))
                 {
@@ -113,14 +111,13 @@ namespace PSCap
                     if (asyncResult.AsyncWaitHandle.WaitOne(timeout))
                         readAmount = pipeServer.EndRead(asyncResult);
                     else
-                        throw new TimeoutException("read wait timed out");
+                        break;
 
                     if (readAmount == 0)
                         break;
 
                     outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(tmpBuf, 0, readAmount)));
                     messageSize += readAmount;
-
                 } while (!pipeServer.IsMessageComplete);
 
                 if (messageSize > 0)
@@ -128,12 +125,51 @@ namespace PSCap
                 else
                     callback(false, null);
             }
-            catch (TimeoutException e)
+            catch (IOException e)
             {
-                Log.Info("Got timeout exception: " + e.Message);
+                Log.Info("Got IOException: " + e.Message);
 
                 callback(false, null);
             }
+        }
+
+        public async Task<List<Byte>> readMessageAsync(CancellationToken token)
+        {
+            if (!serverStarted)
+                throw new InvalidOperationException("Tried to read message from a disconnected pipe");
+
+            return await Task.Run(async delegate
+            {
+                try
+                {
+                    List<byte> outBuf = new List<byte>(100);
+
+                    int messageSize = 0;
+                    byte[] tmpBuf = new byte[100];
+
+                    do
+                    {
+                        int readAmount = await pipeServer.ReadAsync(tmpBuf, 0, tmpBuf.Length, token);
+
+                        if (readAmount == 0)
+                            break;
+
+                        outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(tmpBuf, 0, readAmount)));
+                        messageSize += readAmount;
+                    } while (!pipeServer.IsMessageComplete);
+
+                    if (messageSize > 0)
+                        return outBuf;
+                    else
+                        return null;
+                }
+                catch (IOException e)
+                {
+                    Log.Info("Got IOException: " + e.Message);
+
+                    return null;
+                }
+            });
         }
 
         public void writeMessage(byte[] message, Action<bool> callback, TimeSpan timeout)
@@ -143,18 +179,21 @@ namespace PSCap
 
             try
             {
-                var asyncResult =  pipeServer.BeginWrite(message, 0, message.Length, null, null);
+                var asyncResult = pipeServer.BeginWrite(message, 0, message.Length, null, null);
 
                 if (asyncResult.AsyncWaitHandle.WaitOne(timeout))
+                {
                     pipeServer.EndWrite(asyncResult);
+                    callback(true);
+                }
                 else
-                    throw new TimeoutException("write wait timed out");
-
-                callback(true);
+                {
+                    callback(false);
+                }
             }
-            catch (TimeoutException e)
+            catch (IOException e)
             {
-                Log.Info("Got timeout exception: " + e.Message);
+                Log.Info("Got IOException: " + e.Message);
 
                 callback(false);
             }

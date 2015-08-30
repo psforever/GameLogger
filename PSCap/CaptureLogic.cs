@@ -1,20 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace PSCap
 {
-    enum AttachState
-    {
-        Detached,
-        Attached
-    }
-
-    enum CaptureState
-    {
-        NotCapturing,
-        Capturing
-    }
 
     enum AttachResult
     {
@@ -28,19 +20,57 @@ namespace PSCap
         UnknownFailure,
     }
 
+    enum EventNotification
+    {
+        CaptureStart,
+        CaptureStop,
+        Detach,
+        Attach,
+    }
+
     delegate void AttachResultCallback(bool okay, AttachResult result, string message);
+    delegate void NewEventCallback(EventNotification evt, bool timeout);
 
     class CaptureLogic
     {
+        enum AttachState
+        {
+            Detached,
+            Attached
+        }
+
+        enum CaptureState
+        {
+            NotCapturing,
+            Capturing
+        }
+
+        enum PendingMessageState
+        {
+            Detached,
+            Attached,
+            StartCaptureSent,
+            StartCaptureReceieved,
+            StopCaptureSent,
+            StopCaptureReceived,
+            DisconnectSent,
+            DisconnectReceived,
+        }
+
         AttachState attachState = AttachState.Detached;
         CaptureState captureState = CaptureState.NotCapturing;
+        PendingMessageState pendingMessageState = PendingMessageState.Detached;
 
         ProcessCollectable currentProcess;
         PipeServer pipeServer;
         string dllName;
         string pipeServerName;
 
+        CancellationTokenSource receiveTaskCancel;
+        Task receiveTask;
+
         public event EventHandler AttachedProcessExited;
+        public event NewEventCallback NewEvent;
 
         public CaptureLogic(string pipeServerName, string dllName)
         {
@@ -73,7 +103,11 @@ namespace PSCap
 
             Log.Info("detaching from process {0}", currentProcess);
 
-            if(captureState == CaptureState.Capturing)
+            receiveTaskCancel.Cancel();
+            receiveTask.Wait();
+            receiveTask = null;
+
+            if (captureState == CaptureState.Capturing)
             {
                 Log.Info("currently capturing...stopping capture first");
                 stopCapture();
@@ -88,6 +122,7 @@ namespace PSCap
             //currentProcess.Process.Dispose();
             //currentProcess = null;
 
+            notifyEvent(EventNotification.Detach);
             attachState = AttachState.Detached;
         }
 
@@ -156,6 +191,35 @@ namespace PSCap
 
                     p.EnableRaisingEvents = true;
                     p.Exited += new EventHandler(AttachedProcessExited);
+
+                    receiveTaskCancel = new CancellationTokenSource();
+
+                    // start receive thread
+                    receiveTask = Task.Factory.StartNew(async delegate
+                    {
+                        Log.Debug("Receive task started...");
+
+                        while (!receiveTaskCancel.IsCancellationRequested)
+                        {
+                            List<byte> msg = await pipeServer.readMessageAsync(receiveTaskCancel.Token);
+                            
+                            if (msg != null)
+                            {
+                                DllMessage msgDecoded = DllMessage.Factory.Decode(new BitStream(msg));
+
+                                if (msgDecoded != null)
+                                    handleMessage(msgDecoded);
+                                else
+                                    Log.Error("Failed to decode message");
+                            }
+                            else
+                            {
+                                await Task.Run(() => { if (isAttached()) detach(); });
+                            }
+                        }
+
+                        Log.Debug("Receive task stopped...");
+                    }, receiveTaskCancel.Token);
                 }
                 else
                 {
@@ -166,14 +230,28 @@ namespace PSCap
             });
         }
 
-        public void capture()
+        public async void capture()
         {
             Debug.Assert(captureState == CaptureState.NotCapturing &&
                 attachState == AttachState.Attached, "Must be attached and not capturing already before capturing");
 
             Log.Info("capturing data from process {0}", currentProcess);
 
-            captureState = CaptureState.Capturing;
+            DllMessageStartCapture msg = DllMessage.Factory.Create(DllMessageType.START_CAPTURE) as DllMessageStartCapture;
+
+            msg.reason = DllMessageStartCapture.DllMessageStartCaptureReason.UserRequest;
+
+            await Task.Factory.StartNew(() =>
+            {
+                pipeServer.writeMessage(DllMessage.Factory.Encode(msg).data, (result) =>
+                {
+                    if (!result)
+                        return;
+
+                    pendingMessageState = PendingMessageState.StartCaptureSent;
+                    
+                }, TimeSpan.FromMilliseconds(1000));
+            });
         }
 
         public void stopCapture()
@@ -183,7 +261,42 @@ namespace PSCap
 
             Log.Info("stopping data capture from process {0}", currentProcess);
 
+            notifyEvent(EventNotification.CaptureStop);
             captureState = CaptureState.NotCapturing;
+        }
+
+        private void handleMessage(DllMessage msg)
+        {
+            switch(msg.type)
+            {
+                case DllMessageType.START_CAPTURE_RESP:
+                    if(pendingMessageState == PendingMessageState.StartCaptureSent)
+                    {
+                        DllMessageStartCaptureResp m = msg as DllMessageStartCaptureResp;
+
+                        if(m.okay)
+                        {
+                            Log.Info("DLL confirms capture start");
+                            captureState = CaptureState.Capturing;
+
+                            notifyEvent(EventNotification.CaptureStart);
+                        }
+
+                        pendingMessageState = PendingMessageState.Attached;
+                    }
+
+                    break;
+            }
+        }
+
+        private void notifyEvent(EventNotification evt)
+        {
+            NewEvent.Invoke(evt, false);
+        }
+
+        private void notifyEventTimeout(EventNotification evt)
+        {
+            NewEvent.Invoke(evt, true);
         }
     }
 }

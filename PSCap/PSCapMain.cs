@@ -53,6 +53,7 @@ namespace PSCap
         {
             scanner.ProcessListUpdate += new EventHandler<Process []>(processList_update);
             captureLogic.AttachedProcessExited += new EventHandler(attachedProcessExited);
+            captureLogic.NewEvent += new NewEventCallback(newUIEvent);
 
             // set the logger ID
             this.toolStripLoggerID.Text = "Logger ID " + loggerId;
@@ -270,6 +271,7 @@ namespace PSCap
                     {
                         capturePauseButton.Image = Properties.Resources.StatusAnnotations_Stop_16xLG_color;
                         capturePauseButton.Text = "Capturing...";
+                        capturePauseButton.Enabled = true;
 
                         toolStripAttachButton.Text = "Detach";
                         toolStripAttachButton.Enabled = false;
@@ -362,12 +364,32 @@ namespace PSCap
             }
             else
             {
+                capturePauseButton.Enabled = false;
                 captureLogic.capture();
-                enterUIState(UIState.Capturing);
+                //enterUIState(UIState.Capturing);
                 //Console.WriteLine("Starting capture for " + (ProcessCollectable)toolStripInstance.SelectedItem);
                 //enterState(CaptureState.Capturing);
                 //captureFile = new CaptureFile();
             }
+        }
+
+        private void newUIEvent(EventNotification evt, bool timeout)
+        {
+            if(evt == EventNotification.CaptureStart)
+            {
+                enterUIState(UIState.Capturing);
+            }
+            else if(evt == EventNotification.CaptureStop)
+            {
+                enterUIState(UIState.Attached);
+            }
+            else if(evt == EventNotification.Detach)
+            {
+                enterUIState(UIState.Detaching);
+                enterUIState(UIState.Detached);
+            }
+
+            Log.Info("Got new event " + evt.ToString());
         }
 
         // guard against any strange behavior
@@ -382,73 +404,73 @@ namespace PSCap
 #endif
         }
 
-        private void toolStripAttachButton_Click(object sender, EventArgs e)
+        private async void toolStripAttachButton_Click(object sender, EventArgs e)
         {
             if(captureLogic.isAttached())
             {
                 enterUIState(UIState.Detaching);
 
-                Task.Factory.StartNew(() =>
+                await Task.Factory.StartNew(() =>
                 {
-                    Thread.Sleep(500);
+                    //Thread.Sleep(500);
                     captureLogic.detach();
                     enterUIState(UIState.Detached);
                 });
             }
             else
             {
-                if (isProcessSelected())
+                if (!isProcessSelected())
                 {
-                    enterUIState(UIState.Attaching);
-
+                    Debug.Assert(false, "Attemped to attach without first selecting a process");
+                    return;
+                }
 #if !WITHOUT_GAME
-                    ProcessCollectable targetProcess = toolStripInstance.SelectedItem as ProcessCollectable;
+                ProcessCollectable targetProcess = toolStripInstance.SelectedItem as ProcessCollectable;
 #else
-                    ProcessCollectable targetProcess = new ProcessCollectable(Process.GetCurrentProcess());
+                ProcessCollectable targetProcess = new ProcessCollectable(Process.GetCurrentProcess());
 #endif
 
-                    if (targetProcess == null)
+                if (targetProcess == null)
+                {
+                    MessageBox.Show("Target process target was NULL", "Unknown Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                enterUIState(UIState.Attaching);
+
+                captureLogic.attach(targetProcess,
+                    (okay, attachResult, message) =>
                     {
-                        MessageBox.Show("Target process target was NULL", "Unknown Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        enterUIState(UIState.Detached);
-                        return;
-                    }
-
-                    captureLogic.attach(targetProcess,
-                        (okay, attachResult, message) =>
+                        if (okay)
                         {
-                            if (okay)
+                            enterUIState(UIState.Attached);
+                            return;
+                        }
+
+                        enterUIState(UIState.Detached);
+
+                        if (attachResult == AttachResult.PipeServerStartup)
+                        {
+                            DialogResult res = MessageBox.Show(message + Environment.NewLine + "Would you like to end the offending process?"
+                                , "Failed to Attach", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
+
+                            if (res == DialogResult.Yes)
                             {
-                                enterUIState(UIState.Attached);
-                                return;
-                            }
+                                targetProcess.Process.Refresh();
 
-                            enterUIState(UIState.Detached);
-
-                            if (attachResult == AttachResult.PipeServerStartup)
-                            {
-                                DialogResult res = MessageBox.Show(message + Environment.NewLine + "Would you like to end the offending process?"
-                                    , "Failed to Attach", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
-
-                                if (res == DialogResult.Yes)
+                                if(!targetProcess.Process.HasExited)
                                 {
-                                    targetProcess.Process.Refresh();
-
-                                    if(!targetProcess.Process.HasExited)
-                                    {
-                                        Log.Info("Sending close to process {0}", targetProcess);
-                                        targetProcess.Process.CloseMainWindow();
-                                    }
+                                    Log.Info("Sending close to process {0}", targetProcess);
+                                    targetProcess.Process.CloseMainWindow();
                                 }
                             }
-                            else
-                            {
-                                MessageBox.Show(message, "Failed to Attach", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            }
-                        });
-                }
-                else
-                    Debug.Assert(false, "Attemped to attach without first selecting a process");
+                        }
+                        else
+                        {
+                            MessageBox.Show(message, "Failed to Attach", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    });
+                    
             }
         }
     }
