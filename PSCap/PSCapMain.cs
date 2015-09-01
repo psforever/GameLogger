@@ -357,8 +357,9 @@ namespace PSCap
         {
             if(captureLogic.isCapturing())
             {
+                capturePauseButton.Enabled = false;
                 captureLogic.stopCapture();
-                enterUIState(UIState.Attached);
+                //enterUIState(UIState.Attached);
                 //Console.WriteLine("Stopping capture " + captureFile.ToString());
                 //enterState(CaptureState.Attached);
             }
@@ -375,21 +376,31 @@ namespace PSCap
 
         private void newUIEvent(EventNotification evt, bool timeout)
         {
-            if(evt == EventNotification.CaptureStart)
-            {
-                enterUIState(UIState.Capturing);
-            }
-            else if(evt == EventNotification.CaptureStop)
-            {
-                enterUIState(UIState.Attached);
-            }
-            else if(evt == EventNotification.Detach)
-            {
-                enterUIState(UIState.Detaching);
-                enterUIState(UIState.Detached);
-            }
+            Log.Info("Got new UIEvent " + evt.ToString());
 
-            Log.Info("Got new event " + evt.ToString());
+            switch (evt)
+            {
+                case EventNotification.Attached:
+                    break;
+                case EventNotification.Attaching:
+                    break;
+                case EventNotification.Detached:
+                    enterUIState(UIState.Detached);
+                    break;
+                case EventNotification.Detaching:
+                    enterUIState(UIState.Detaching);
+                    break;
+                case EventNotification.CaptureStarted:
+                    enterUIState(UIState.Capturing);
+                    break;
+                case EventNotification.CaptureStarting:
+                    break;
+                case EventNotification.CaptureStopped:
+                    enterUIState(UIState.Attached);
+                    break;
+                case EventNotification.CaptureStopping:
+                    break;
+            }
         }
 
         // guard against any strange behavior
@@ -412,9 +423,7 @@ namespace PSCap
 
                 await Task.Factory.StartNew(() =>
                 {
-                    //Thread.Sleep(500);
                     captureLogic.detach();
-                    enterUIState(UIState.Detached);
                 });
             }
             else

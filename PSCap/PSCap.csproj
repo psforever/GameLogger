@@ -62,6 +62,7 @@
     <Compile Include="DllHandshake.cs" />
     <Compile Include="DLLInjector.cs" />
     <Compile Include="DllMessage.cs" />
+    <Compile Include="GameRecord.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="PipeServer.cs" />
     <Compile Include="ProcessCollectable.cs" />

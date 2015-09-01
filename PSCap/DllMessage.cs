@@ -343,27 +343,26 @@ namespace PSCap
 
     class DllMessageNewRecord : DllMessage
     {
-        public enum RecordType
-        {
-            Packet,
-            Log,
-            Event,
-        }
-
-        public RecordType recordType;
-        public List<byte> recordData;
+        public GameRecord record;
 
         protected override bool decode(BitStream stream)
         {
-            recordType = (RecordType)BitOps.ReadByte(stream);
-            recordData = stream.copyRest();
+            GameRecord newRecord = GameRecord.Factory.Decode(stream);
+
+            if (newRecord == null)
+                return false;
+
+            record = newRecord;
 
             return true;
         }
 
         protected override List<byte> encode()
         {
-            return encodeNotImplemented();
+            if (record == null)
+                throw new InvalidOperationException("GameRecord has not been set");
+
+            return GameRecord.Factory.Encode(record);
         }
     }
 }
