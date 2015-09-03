@@ -35,11 +35,10 @@ namespace PSCap
         const string NO_INSTANCE_PLACEHOLDER = "No instances";
         ProcessScanner scanner = new ProcessScanner("PlanetSide");
         // manages the state of the logger and the transitions from detached attached etc
-        //CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, Path.Combine(Environment.CurrentDirectory, "pslog.dll"));
-        CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, "C:\\Users\\chord\\Documents\\code\\psemu\\src\\tools\\pslog\\bin\\Debug\\pslog.dll" );
+        // CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, Path.Combine(Environment.CurrentDirectory, "pslog.dll"));
+        CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, "C:\\Users\\chord\\Documents\\code\\psemu\\src\\tools\\dll\\pslog\\bin\\Debug\\pslog.dll" );
         CaptureFile captureFile;
         int lastSelectedInstanceIndex = 0;
-        //volatile bool killThread = false;
         bool followLast = true;
         int loggerId = 0;
 
@@ -54,6 +53,9 @@ namespace PSCap
             scanner.ProcessListUpdate += new EventHandler<Process []>(processList_update);
             captureLogic.AttachedProcessExited += new EventHandler(attachedProcessExited);
             captureLogic.NewEvent += new NewEventCallback(newUIEvent);
+            captureLogic.OnNewRecord += new NewGameRecord(newRecord);
+
+            initListView();
 
             // set the logger ID
             this.toolStripLoggerID.Text = "Logger ID " + loggerId;
@@ -74,6 +76,26 @@ namespace PSCap
             listView1.Columns.Add("Time", 140);
             listView1.Columns.Add("Event", 100);
             listView1.Columns.Add("Data", 100);
+        }
+
+        private void newRecord(List<GameRecord> recs)
+        {
+            List<string> wow = new List<String>();
+
+            foreach(GameRecord rec in recs)
+            {
+                //Log.Debug("Got new record type {0}", rec.type);
+
+                GameRecordPacket record = rec as GameRecordPacket;
+
+                string line = "";
+                foreach (byte b in record.packet)
+                    line += string.Format("{0:X} ", b);
+
+                wow.Add(line);
+            }
+
+            addItems(wow);
         }
 
         private void attachedProcessExited(object o, EventArgs e)
@@ -180,6 +202,35 @@ namespace PSCap
                 row[1] = "";
 
                 listView1.Items.Add(new ListViewItem(row));
+                //listView1.VirtualListSize++;
+
+                if (followLast)
+                    scrollToEnd();
+
+                setStatus(listView1.Items.Count + " packets");
+            });
+        }
+
+        private void addItems(List<string> items)
+        {
+            this.SafeInvoke(delegate
+            {
+                //items.Add(item);
+              
+                listView1.BeginUpdate();
+
+                foreach(string i in items)
+                {
+                    string[] row = new string[2];
+
+                    row[0] = i;// items[items.Count-1].ToString();
+                    row[1] = "";
+
+                    listView1.Items.Add(new ListViewItem(row));
+                }
+
+                listView1.EndUpdate();
+                
                 //listView1.VirtualListSize++;
 
                 if (followLast)
@@ -338,7 +389,7 @@ namespace PSCap
                 Console.WriteLine("New selection " + s.ToString());
             }*/
 
-            richTextBox1.SelectionColor = Color.Red;
+            richTextBox1.SelectionColor = Color.Green;
             richTextBox1.AppendText("Wat"); // dont remove this if you want colors
 
             if (listView1.SelectedIndices.Count == 0)
@@ -359,18 +410,11 @@ namespace PSCap
             {
                 capturePauseButton.Enabled = false;
                 captureLogic.stopCapture();
-                //enterUIState(UIState.Attached);
-                //Console.WriteLine("Stopping capture " + captureFile.ToString());
-                //enterState(CaptureState.Attached);
             }
             else
             {
                 capturePauseButton.Enabled = false;
                 captureLogic.capture();
-                //enterUIState(UIState.Capturing);
-                //Console.WriteLine("Starting capture for " + (ProcessCollectable)toolStripInstance.SelectedItem);
-                //enterState(CaptureState.Capturing);
-                //captureFile = new CaptureFile();
             }
         }
 

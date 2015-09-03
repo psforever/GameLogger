@@ -35,6 +35,7 @@ namespace PSCap
     delegate void AttachResultCallback(bool okay, AttachResult result, string message);
     delegate void NewEventCallback(EventNotification evt, bool timeout);
     delegate void PendingMessageCallback(EventNotification evt, bool success);
+    delegate void NewGameRecord(List<GameRecord> record);
 
     class CaptureLogic
     {
@@ -79,6 +80,7 @@ namespace PSCap
         // event notifications
         public event EventHandler AttachedProcessExited;
         public event NewEventCallback NewEvent;
+        public event NewGameRecord OnNewRecord;
 
         public CaptureLogic(string pipeServerName, string dllName)
         {
@@ -126,7 +128,8 @@ namespace PSCap
             }
 
             receiveTaskCancel.Cancel();
-            receiveTask.Wait();
+            if(!receiveTask.IsFaulted)
+                receiveTask.Wait();
             receiveTask = null;
 
             pipeServer.stop();
@@ -296,18 +299,11 @@ namespace PSCap
 
             switch(msg.type)
             {
-                case DllMessageType.NEW_RECORD:
+                case DllMessageType.NEW_RECORDS:
                     {
-                        DllMessageNewRecord m = msg as DllMessageNewRecord;
+                        DllMessageNewRecords m = msg as DllMessageNewRecords;
 
-                        Log.Debug("Got new record type {0}", m.record.type);
-
-                        GameRecordPacket record = m.record as GameRecordPacket;
-
-                        foreach(byte b in record.packet)
-                            Console.Write("{0:X} ", b);
-
-                        Console.WriteLine();
+                        OnNewRecord(m.records);
 
                         break;
                     }

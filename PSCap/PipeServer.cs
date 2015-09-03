@@ -98,10 +98,10 @@ namespace PSCap
 
             try
             {
-                List<byte> outBuf = new List<byte>(100);
+                List<byte> outBuf = new List<byte>(1000);
                 
                 int messageSize = 0;
-                byte[] tmpBuf = new byte[100];
+                byte[] tmpBuf = new byte[1000];
 
                 do
                 {

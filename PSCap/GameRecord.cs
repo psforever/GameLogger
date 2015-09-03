@@ -67,7 +67,10 @@ namespace PSCap
                 // handle any decoding errors
                 try
                 {
-                    rec.decode(stream);
+                    bool decodeResult = rec.decode(stream);
+
+                    if (!decodeResult)
+                        throw new InvalidOperationException();
                 }
                 catch (InvalidOperationException e)
                 {

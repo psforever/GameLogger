@@ -17,7 +17,7 @@ namespace PSCap
         START_CAPTURE_RESP, // Either
         STOP_CAPTURE, // Either
         STOP_CAPTURE_RESP, // Either
-        NEW_RECORD, // FROM
+        NEW_RECORDS, // FROM
     }
 
     abstract class DllMessage
@@ -60,8 +60,8 @@ namespace PSCap
                     case DllMessageType.STOP_CAPTURE_RESP:
                         msg = new DllMessageStopCaptureResp();
                         break;
-                    case DllMessageType.NEW_RECORD:
-                        msg = new DllMessageNewRecord();
+                    case DllMessageType.NEW_RECORDS:
+                        msg = new DllMessageNewRecords();
                         break;
                     default:
                         throw new ArgumentException(string.Format("DllMessage.Create: Unhandled DllMessage type {0}", type));
@@ -96,7 +96,10 @@ namespace PSCap
                 // handle any decoding errors
                 try
                 {
-                    msg.decode(stream);
+                    bool decodeResult = msg.decode(stream);
+
+                    if (!decodeResult)
+                        throw new InvalidOperationException();
                 }
                 catch(InvalidOperationException e)
                 {
@@ -341,28 +344,51 @@ namespace PSCap
         }
     }
 
-    class DllMessageNewRecord : DllMessage
+    class DllMessageNewRecords : DllMessage
     {
-        public GameRecord record;
+        public List<GameRecord> records = new List<GameRecord>();
 
         protected override bool decode(BitStream stream)
         {
-            GameRecord newRecord = GameRecord.Factory.Decode(stream);
+            uint amount = BitOps.ReadUInt32(stream);
 
-            if (newRecord == null)
-                return false;
+            //Log.Info("decoding over {0}", amount);
 
-            record = newRecord;
+            for (int i = 0; i < amount; i++)
+            {
+                //Log.Info("decoding {0}", i);
+                GameRecord newRecord = GameRecord.Factory.Decode(stream);
+
+                if (newRecord == null)
+                    return false;
+
+                records.Add(newRecord);
+            }
 
             return true;
         }
 
         protected override List<byte> encode()
         {
-            if (record == null)
+            if (records == null || records.Count == 0)
                 throw new InvalidOperationException("GameRecord has not been set");
 
-            return GameRecord.Factory.Encode(record);
+            uint amount = (uint)records.Count;
+            List<byte> outBytes = new List<byte>((int)amount * 10);
+
+            BitOps.WriteUInt32(outBytes, amount);
+
+            for (int i = 0; i < amount; i++)
+            {
+                List<byte> record = GameRecord.Factory.Encode(records[i]);
+
+                if (record == null)
+                    return null;
+
+                outBytes.AddRange(record);
+            }
+
+            return outBytes;
         }
     }
 }
