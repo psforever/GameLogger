@@ -63,6 +63,36 @@ namespace PSCap.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap arrow_Down_16xLG_red {
+            get {
+                object obj = ResourceManager.GetObject("arrow_Down_16xLG_red", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap arrow_Up_16xLG_green {
+            get {
+                object obj = ResourceManager.GetObject("arrow_Up_16xLG_green", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap lock_16xLG {
+            get {
+                object obj = ResourceManager.GetObject("lock_16xLG", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap StatusAnnotations_Play_16xLG_color {
             get {
                 object obj = ResourceManager.GetObject("StatusAnnotations_Play_16xLG_color", resourceCulture);

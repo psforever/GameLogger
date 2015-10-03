@@ -24,8 +24,8 @@ namespace PSCap
 
         public bool start()
         {
-            Debug.Assert(!serverStarted, "Tried to start the pipe server twice");
-            Debug.Assert(pipeServer == null, "Pipe server instance is not null");
+            Trace.Assert(!serverStarted, "Tried to start the pipe server twice");
+            Trace.Assert(pipeServer == null, "Pipe server instance is not null");
 
             // callee should handle exceptions
             pipeServer = new NamedPipeServerStream(PipeName,
@@ -37,7 +37,7 @@ namespace PSCap
 
         public void stop()
         {
-            Debug.Assert(serverStarted, "Pipe server cannot be stopped as it wasn't running");
+            Trace.Assert(serverStarted, "Pipe server cannot be stopped as it wasn't running");
 
             pipeServer.Close();
             pipeServer.Dispose();

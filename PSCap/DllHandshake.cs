@@ -39,12 +39,12 @@ namespace PSCap
         {
             if (!result)
             {
-                Log.Info("Failed to read message from DLL");
+                Log.Error("Failed to read message from DLL");
                 smartCallback(false, AttachResult.DllHandshake, "DLL did not send a handshake");
                 return;
             }
 
-            Log.Info("Read message of size " + message.Count);
+            Log.Debug("Read message of size " + message.Count);
 
             DllMessageIdentify msg = DllMessage.Factory.Decode(new BitStream(message)) as DllMessageIdentify;
 
@@ -54,40 +54,50 @@ namespace PSCap
                 return;
             }
 
-            Log.Info("DLL version {0}.{1}.{2}, pid {3}",
-                msg.majorVersion, msg.minorVersion, msg.revision, msg.pid);
+            Log.Info("DLL version {0}.{1}, PID {2}",
+                msg.majorVersion, msg.minorVersion, msg.pid);
+
+            if (PSCapMain.GAME_LOGGER_MAJOR_VERSION != msg.majorVersion ||
+                PSCapMain.GAME_LOGGER_MINOR_VERSION != msg.minorVersion)
+            {
+                smartCallback(false, AttachResult.DllHandshake, string.Format("DLL version is incompatible.\n" +
+                    "Required version {0}.{1}, got {2}.{3}",
+                    PSCapMain.GAME_LOGGER_MAJOR_VERSION, PSCapMain.GAME_LOGGER_MINOR_VERSION,
+                    msg.majorVersion, msg.minorVersion));
+                return;
+            }
 
             // verify that the DLL has returned the correct PID
-            // TODO: verify that this DLL version is compatible with the current logger version
-
-            DllMessageIdentifyResp msgResp = DllMessage.Factory.Create(DllMessageType.IDENTIFY_RESP) as DllMessageIdentifyResp;
 #if !WITHOUT_GAME
             bool processMatch = process.Process.Id == msg.pid;
 #else
             bool processMatch = true;
 #endif
 
-            msgResp.accepted = processMatch;
+            if (!processMatch)
+            {
+                smartCallback(false, AttachResult.DllHandshake, "DLL did not send the right PID");
+                return;
+            }
+
+            DllMessageIdentifyResp msgResp = DllMessage.Factory.Create(DllMessageType.IDENTIFY_RESP) as DllMessageIdentifyResp;
+            msgResp.accepted = true;
 
             pipeServer.writeMessage(DllMessage.Factory.Encode(msgResp).data, (resultWrite) =>
             {
-                handleWriteMessage(processMatch, smartCallback, resultWrite);
+                handleWriteMessage(smartCallback, resultWrite);
             }, TimeSpan.FromMilliseconds(1000));
         }
 
-        private static void handleWriteMessage(bool processMatch, AttachResultCallback callback, bool result)
+        private static void handleWriteMessage(AttachResultCallback callback, bool result)
         {
             if (result)
             {
-                // success case!
-                if (processMatch)
-                    callback(true, AttachResult.Success, "");
-                else
-                    callback(false, AttachResult.DllHandshake, "DLL did not send the right PID");
+                callback(true, AttachResult.Success, "");
             }
             else
             {
-                Log.Info("Failed to write message to DLL");
+                Log.Error("Failed to write message to DLL");
                 callback(false, AttachResult.DllHandshake, "DLL didn't receive the handshake response");
             }
         }

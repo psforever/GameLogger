@@ -191,14 +191,12 @@ namespace PSCap
     {
         public byte majorVersion;
         public byte minorVersion;
-        public byte revision;
         public uint pid;
 
         protected override bool decode(BitStream stream)
         {
             majorVersion = BitOps.ReadByte(stream);
             minorVersion = BitOps.ReadByte(stream);
-            revision = BitOps.ReadByte(stream);
             pid = BitOps.ReadUInt32(stream);
 
             return true;

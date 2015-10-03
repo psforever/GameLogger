@@ -6,9 +6,11 @@ using System.Threading.Tasks;
 
 namespace PSCap
 {
+
+    
     class BitStream : object
     {
-        public byte [] data { get; }
+        public byte [] data { get; private set; }
         int nextByte;
 
         public BitStream()
@@ -27,6 +29,21 @@ namespace PSCap
         {
             this.data = data;
             nextByte = 0;
+        }
+
+        public void append(byte [] other)
+        {
+            data = data.Concat(other);
+        }
+
+        public void append(byte[] other, int offset, int size)
+        {
+            data = data.ConcatSome(other, offset, size);
+        }
+
+        public void append(List<byte> data)
+        {
+            append(data.ToArray());
         }
 
         public bool isEnd()
@@ -49,12 +66,20 @@ namespace PSCap
             return size() - nextByte;
         }
 
+        public void seek(int pos)
+        {
+            if (pos < 0 || pos >= data.Length)
+                throw new ArgumentException("seek position out of bounds");
+
+            nextByte = pos;
+        }
+
         public void seekEnd()
         {
             nextByte = size();
         }
 
-        public void seekStart()
+        public void rewind()
         {
             nextByte = 0;
         }
@@ -196,6 +221,28 @@ namespace PSCap
             buf.AddRange(BitConverter.GetBytes(val));
         }
 
+        public static ulong ReadUInt64(BitStream stream)
+        {
+            if (stream.isEnd())
+            {
+                throw new InvalidOperationException("Reached end of bitstream");
+            }
+
+            int pos = stream.position();
+
+            if (!stream.advance(sizeof(ulong)))
+                throw new InvalidOperationException("Data requested exceeds bitstream");
+
+            ulong data = BitConverter.ToUInt64(stream.data, pos);
+
+            return data;
+        }
+
+        public static void WriteUInt64(List<byte> buf, ulong val)
+        {
+            buf.AddRange(BitConverter.GetBytes(val));
+        }
+
         private static void EncodeTypeLength(List<byte> buf, EncodingFlags type, uint length)
         {
             byte encodingType = (byte)type;
@@ -251,7 +298,7 @@ namespace PSCap
         public static void EncodeString(List<byte> buf, string val)
         {
             EncodeTypeLength(buf, EncodingFlags.ENCODING_TYPE_STRING, (uint)val.Length);
-            buf.AddRange(Enumerable.Cast<byte>(val.AsEnumerable()));
+            buf.AddRange(Encoding.ASCII.GetBytes(val));
         }
 
         public static string DecodeString(BitStream stream)
@@ -260,7 +307,7 @@ namespace PSCap
             string outStr = stream.extractString(strSize);
 
             if (outStr == null)
-                throw new InvalidOperationException("String requested exceeds bitstream");
+                throw new InvalidOperationException("String decoding exceeds bitstream");
 
             return outStr;
         }
@@ -277,7 +324,7 @@ namespace PSCap
             List<byte> outStream = stream.extractOctetStream(size);
 
             if (outStream == null)
-                throw new InvalidOperationException("Octet stream requested exceeds bitstream");
+                throw new InvalidOperationException("Octet stream decoding exceeds bitstream");
 
             return outStream;
         }

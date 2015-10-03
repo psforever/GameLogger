@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,6 +9,8 @@ namespace PSCap
 {
     public static class Log
     {
+        public static StreamWriter logFile = null;
+
         public static void Error(string fmt, params object[] args)
         {
             DoLog("error", fmt, args);
@@ -35,7 +38,17 @@ namespace PSCap
 
         private static void DoLog(string prefix, string fmt, params object[] args)
         {
-            Console.WriteLine(string.Format("[" + prefix + "] " + fmt, args));
+            Raw(string.Format("[" + prefix + "] " + fmt, args) + Environment.NewLine);
+        }
+
+        public static void Raw(string data)
+        {
+            if(logFile != null)
+            {
+                logFile.Write(data);
+            }
+
+            Console.Write(data);
         }
     }
 }

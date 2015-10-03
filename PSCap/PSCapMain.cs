@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
@@ -31,99 +32,197 @@ namespace PSCap
             Capturing,
         }
 
-        List<string> items = new List<string>();
+
+        // bump these when editing DllMessages or capture records
+        public const byte GAME_LOGGER_MAJOR_VERSION = 1;
+        public const byte GAME_LOGGER_MINOR_VERSION = 0;
+
         const string NO_INSTANCE_PLACEHOLDER = "No instances";
         ProcessScanner scanner = new ProcessScanner("PlanetSide");
         // manages the state of the logger and the transitions from detached attached etc
-        // CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, Path.Combine(Environment.CurrentDirectory, "pslog.dll"));
-        CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, "C:\\Users\\chord\\Documents\\code\\psemu\\src\\tools\\dll\\pslog\\bin\\Debug\\pslog.dll" );
-        CaptureFile captureFile;
+        CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, Path.Combine(Environment.CurrentDirectory, "pslog.dll"));
+        //CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, "C:\\Users\\chord\\Documents\\code\\psemu\\src\\tools\\dll\\pslog\\bin\\Release\\pslog.dll" );
+        CaptureFile captureFile = null;
+        ulong estimatedCaptureSize = 0;
+
         int lastSelectedInstanceIndex = 0;
         bool followLast = true;
         int loggerId = 0;
+
+        private ByteViewer byteViewer1;
+        private UIState currentUIState = UIState.Detached;
 
         public PSCapMain(int loggerId)
         {
             this.loggerId = loggerId;
             InitializeComponent();
+
+            byteViewer1 = new ByteViewer();
+            byteViewer1.Dock = System.Windows.Forms.DockStyle.Fill;
+            byteViewer1.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+            this.byteViewer1.Location = new System.Drawing.Point(0, 0);
+            this.byteViewer1.Name = "byteViewer1";
+            this.byteViewer1.Size = new System.Drawing.Size(771, 150);
+            this.splitContainer1.Panel2.Controls.Add(byteViewer1);
+
+            splitContainer1.PerformLayout();
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            scanner.ProcessListUpdate += new EventHandler<Process []>(processList_update);
-            captureLogic.AttachedProcessExited += new EventHandler(attachedProcessExited);
-            captureLogic.NewEvent += new NewEventCallback(newUIEvent);
-            captureLogic.OnNewRecord += new NewGameRecord(newRecord);
-
-            initListView();
-
             // set the logger ID
             this.toolStripLoggerID.Text = "Logger ID " + loggerId;
 
+            try
+            {
+                Log.logFile = new StreamWriter("PSGameLogger" + loggerId + "_log.txt", false);
+                Log.logFile.AutoFlush = true;
+                Log.logFile.WriteLine("PS1 GameLogger Logging started at " + DateTime.Now);
+            }
+            catch(IOException ex)
+            {
+                MessageBox.Show("Failed to create log file: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            scanner.ProcessListUpdate += new EventHandler<Process []>(processList_update);
+            captureLogic.AttachedProcessExited += new AttachedProcessExited(attachedProcessExited);
+            captureLogic.NewEvent += new NewEventCallback(newUIEvent);
+            captureLogic.OnNewRecord += new NewGameRecord(newRecord);
+
             // start off detached and with no open game instances
             enterUIState(UIState.Detached);
+
+            setCaptureFile(captureFile);
+            initListView();
+        }
+
+        private async void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.ApplicationExitCall)
+                return;
+
+            // TODO: handle the cases where we are attached, capturing, or have an unsaved capture
+            if (captureFile != null && captureFile.isModified())
+            {
+                DialogResult result = MessageBox.Show("You have an unsaved capture file. Would you like to save it before exiting?",
+                    "Save capture file", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+
+                if (result == DialogResult.Yes)
+                {
+                    if (captureLogic.isCapturing())
+                        captureLogic.stopCapture();
+
+                    bool canceled;
+                    saveCaptureFile(out canceled);
+
+                    if (canceled)
+                    {
+                        e.Cancel = true;
+                    }
+
+                }
+                else if (result == DialogResult.Cancel)
+                {
+                    e.Cancel = true;
+                }
+            }
+
+            if(e.Cancel)
+            {
+                Log.Info("Form close cancelled");
+                return;
+            }
+
+            Log.Info("Form closing");
         }
 
         private void initListView()
         {
-            listView1.VirtualMode = false;
+            listView1.VirtualMode = true;
             listView1.VirtualListSize = 0;
+
             listView1.View = View.Details;
             listView1.FullRowSelect = true;
             listView1.EnableDoubleBuffer();
 
             //Add column header
-            listView1.Columns.Add("Time", 140);
-            listView1.Columns.Add("Event", 100);
+            listView1.Columns.Add("Event", 150);
+            listView1.Columns.Add("Time", 100);
             listView1.Columns.Add("Data", 100);
+            
+            eventImageList.Images.Add(global::PSCap.Properties.Resources.arrow_Up_16xLG_green);
+            eventImageList.Images.Add(global::PSCap.Properties.Resources.arrow_Down_16xLG_red);
+            eventImageList.Images.Add(global::PSCap.Properties.Resources.lock_16xLG);
+
+            listView1.SmallImageList = eventImageList;
         }
 
         private void newRecord(List<GameRecord> recs)
         {
-            List<string> wow = new List<String>();
+            List<Record> newItems = new List<Record>(recs.Count);
 
-            foreach(GameRecord rec in recs)
+            foreach (GameRecord gameRec in recs)
             {
-                //Log.Debug("Got new record type {0}", rec.type);
+                Record rec = Record.Factory.Create(RecordType.GAME);
 
-                GameRecordPacket record = rec as GameRecordPacket;
+                switch(gameRec.type)
+                {
+                    case GameRecordType.PACKET:
+                        GameRecordPacket record = gameRec as GameRecordPacket;
+                        RecordGame gameRecord = rec as RecordGame;
+                        gameRecord.setRecord(record);
 
-                string line = "";
-                foreach (byte b in record.packet)
-                    line += string.Format("{0:X} ", b);
+                        /// XXX: nasty hack to prevent password disclosures
+                        byte [] sensitive = { 0x00, 0x09, 0x00, 0x00, 0x01, 0x03 };
+                        int i = 0;
 
-                wow.Add(line);
+                        for(i = 0; i < record.packet.Count && i < sensitive.Length; i++)
+                        {
+                            if (record.packet[i] != sensitive[i])
+                                break;
+                        }
+
+                        if(i == sensitive.Length)
+                        {
+                            Log.Info("Found sensitive login packet. Scrubbing from the record");
+                            record.packet.Clear();
+                            record.packet.AddRange(sensitive);
+                        }
+                        break;
+                    default:
+                        Trace.Assert(false, string.Format("NewRecord: Unhandled record type {0}", gameRec.type));
+                        break;
+                }
+
+                addRecordSizeEstimate(rec.size);
+                captureFile.addRecord(rec);
             }
 
-            addItems(wow);
+            setRecordCount(captureFile.getNumRecords());
         }
 
-        private void attachedProcessExited(object o, EventArgs e)
+        private void attachedProcessExited(Process p)
         {
-            if (!captureLogic.isAttached())
-            {
-                Log.Info("Process exited but we weren't attached. Don't care");
-                return;
-            }
-
-            Log.Warning("attached process has exited. Detach forced...");
-            Process p = captureLogic.getAttachedProcess().Process;
-            captureLogic.detach();
+            Log.Warning("attached process has exited");
 
             // XXX: this is shit. We have to "stop capture" then detach. Weird state
             // to be in, but it saves code at the expense of breaking some models
-            enterUIState(UIState.Attached);
-            enterUIState(UIState.Detaching);
-            enterUIState(UIState.Detached);
+            //enterUIState(UIState.Attached);
+            //enterUIState(UIState.Detaching);
+            //enterUIState(UIState.Detached);
 
             // TODO: add more messagebox types for capturing/not capturing
-            if(p.ExitCode == 0)
-                MessageBox.Show("The attached process has exited safely. Detach forced.", "Process Exited",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            else
-                MessageBox.Show(string.Format("The attached process has crashed with exit code 0x{0:X}. Detach forced.", p.ExitCode),
-                    "Process Crashed",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+            /*this.SafeInvoke(delegate
+            {
+                if (p.ExitCode == 0)
+                    MessageBox.Show("The attached process has exited safely.", "Process Exited",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                else
+                    MessageBox.Show(string.Format("The attached process has crashed with exit code 0x{0:X}.", p.ExitCode),
+                        "Process Crashed",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+            });*/
         }
 
         void disableProcessSelection(DisableProcessSelectionReason reason)
@@ -191,55 +290,6 @@ namespace PSCap
             });
         }
 
-        private void addItem(string item)
-        {
-            this.SafeInvoke(delegate 
-            {
-                //items.Add(item);
-                string[] row = new string[2];
-
-                row[0] = item;// items[items.Count-1].ToString();
-                row[1] = "";
-
-                listView1.Items.Add(new ListViewItem(row));
-                //listView1.VirtualListSize++;
-
-                if (followLast)
-                    scrollToEnd();
-
-                setStatus(listView1.Items.Count + " packets");
-            });
-        }
-
-        private void addItems(List<string> items)
-        {
-            this.SafeInvoke(delegate
-            {
-                //items.Add(item);
-              
-                listView1.BeginUpdate();
-
-                foreach(string i in items)
-                {
-                    string[] row = new string[2];
-
-                    row[0] = i;// items[items.Count-1].ToString();
-                    row[1] = "";
-
-                    listView1.Items.Add(new ListViewItem(row));
-                }
-
-                listView1.EndUpdate();
-                
-                //listView1.VirtualListSize++;
-
-                if (followLast)
-                    scrollToEnd();
-
-                setStatus(listView1.Items.Count + " packets");
-            });
-        }
-
         private void setStatus(string status)
         {
             this.SafeInvoke(delegate
@@ -248,9 +298,125 @@ namespace PSCap
             });
         }
 
+        private void setRecordSizeEstimate(ulong bytes)
+        {
+            estimatedCaptureSize = bytes;
+        }
+
+        private void addRecordSizeEstimate(ulong bytes)
+        {
+            estimatedCaptureSize += bytes;
+        }
+
+        private void updateCaptureFileState()
+        {
+            this.SafeInvoke(delegate
+            {
+                if (captureFile == null)
+                {
+                    saveToolStripMenuItem.Enabled = false;
+                    saveAsToolStripMenuItem.Enabled = false;
+                    copyToolStripMenuItem.Enabled = false;
+                    openToolStripMenuItem.Enabled = true;
+                    return;
+                }
+
+                if (currentUIState == UIState.Capturing)
+                {
+                    saveToolStripMenuItem.Enabled = false;
+                    saveAsToolStripMenuItem.Enabled = false;
+                    copyToolStripMenuItem.Enabled = true;
+                    openToolStripMenuItem.Enabled = false;
+                    return;
+                }
+
+                if (captureFile.isModified())
+                    saveToolStripMenuItem.Enabled = true;
+                else
+                    saveToolStripMenuItem.Enabled = false;
+
+                saveAsToolStripMenuItem.Enabled = true;
+                copyToolStripMenuItem.Enabled = true;
+                openToolStripMenuItem.Enabled = true;
+            });
+        }
+
+
+        private void setCaptureFile(CaptureFile cap)
+        {
+            this.SafeInvoke(delegate
+            {
+                // must be set before
+                captureFile = cap;
+
+                if (cap == null)
+                {
+                    updateCaptureFileState();
+
+                    // set the estimate before updating the record count
+                    setRecordSizeEstimate(0);
+                    setRecordCount(0);
+                    setCaptureFileName("");
+                }
+                else
+                {
+                    updateCaptureFileState();
+
+                    ulong estimatedSize = 0;
+
+                    foreach (Record r in cap.getRecords())
+                        estimatedSize += r.size;
+
+                    setRecordSizeEstimate(estimatedSize);
+                    setRecordCount(cap.getNumRecords());
+
+                    setCaptureFileName(Path.GetFileName(cap.getCaptureFilename()));
+                }
+                
+            });
+        }
+
+        private void setRecordCount(int count)
+        {
+            this.SafeInvoke(delegate
+            {
+                listView1.SetVirtualListSize(count);
+                if (followLast)
+                    scrollToEnd();
+
+                if (count == 0)
+                {
+                    recordCountLabel.Visible = false;
+                    toolStripStatus.BorderSides = ToolStripStatusLabelBorderSides.None;
+                }
+                else
+                {
+                    recordCountLabel.Text = string.Format("{0} record{1}{2}",
+                        count, count == 1 ? "" : "s",
+                        estimatedCaptureSize == 0 ? "" :
+                        string.Format(" ({0})", Util.BytesToString((long)estimatedCaptureSize)));
+                    recordCountLabel.Visible = true;
+                    toolStripStatus.BorderSides = ToolStripStatusLabelBorderSides.Right;
+                }
+            });
+        }
+
+        private void setCaptureFileName(string name)
+        {
+            this.SafeInvoke(delegate
+            {
+                if (string.Empty == name)
+                    captureFileLabel.Text = "No capture file";
+                else
+                    captureFileLabel.Text = name;
+            });
+        }
+
         void enterUIState(UIState state)
         {
-            switch(state)
+            currentUIState = state;
+
+            switch (state)
             {
                 case UIState.Detached:
                     Log.Info("UIState Detached");
@@ -301,6 +467,10 @@ namespace PSCap
                         toolStripAttachButton.Text = "Detach";
                         toolStripAttachButton.Enabled = true;
 
+                        updateCaptureFileState();
+
+                        openToolStripMenuItem.Enabled = true;
+
                         // status bar
                         statusStrip1.BackColor = Color.DarkGreen;
                         setStatus("Ready to capture");
@@ -321,46 +491,67 @@ namespace PSCap
                     this.SafeInvoke(delegate
                     {
                         capturePauseButton.Image = Properties.Resources.StatusAnnotations_Stop_16xLG_color;
-                        capturePauseButton.Text = "Capturing...";
+                        capturePauseButton.Text = "Stop Capture";
                         capturePauseButton.Enabled = true;
 
                         toolStripAttachButton.Text = "Detach";
                         toolStripAttachButton.Enabled = false;
+
+                        updateCaptureFileState();
 
                         // status bar
                         statusStrip1.BackColor = Color.DarkRed;
                         setStatus("Capturing...");
                     });
                     break;
+                default:
+                    Trace.Assert(false, "Unhandled UIState " + state.ToString());
+                    break;
             }
         }
 
         private void scrollToEnd()
         {
-            this.SafeInvoke(delegate
-            {
-                //Console.WriteLine("Visible " + listView1.VirtualListSize.ToString());
-                listView1.EnsureVisible(listView1.Items.Count - 1);
-            });
+            if(listView1.Items.Count > 0)
+                this.SafeInvoke(delegate
+                {
+                    listView1.EnsureVisible(listView1.Items.Count - 1);
+                });
         }
         
         private void listView1_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
-            //A cache miss, so create a new ListViewItem and pass it back. 
-            string[] row = new string[2];
+            RecordGame i = captureFile.getRecord(e.ItemIndex) as RecordGame;
 
-            row[0] = items[e.ItemIndex].ToString();
-            row[1] = row[0];
+            string[] row = new string[3];
+
+            double time = i.getSecondsSinceStart((uint)captureFile.getStartTime());
+
+            GameRecordPacket record = i.Record as GameRecordPacket;
+
+            string bytes = "";
+            bytes = ((PlanetSideMessageType)record.packet[0]).ToString();
+            //foreach (byte b in record.packet)
+            //    bytes += string.Format("{0:X2} ", b);
+
+            string eventName = record.packetDestination == GameRecordPacket.PacketDestination.Client ? "Received Packet" : "Sent Packet";
+
+            row[0] = eventName;
+            row[1] = string.Format("{0:0.000000}", time);
+            row[2] = bytes;
+            
             e.Item = new ListViewItem(row);
+            e.Item.ImageIndex = record.packetDestination == GameRecordPacket.PacketDestination.Server ? 0 : 1;
         }
 
         private void listView1_OnScroll(object sender, ScrollEventArgs e)
         {
-            Console.WriteLine("Scroll event old " + e.OldValue + ", new " + e.NewValue + ", target " + listView1.VirtualListSize);
+            //Console.WriteLine("Scroll event old " + e.OldValue + ", new " + e.NewValue + ", target " + listView1.VirtualListSize);
 
             int itemHeight;
 
-            if (listView1.Items.Count == 0)
+            //if (listView1.Items.Count == 0)
+            if (listView1.VirtualListSize == 0)
                 itemHeight = 0;
             else
                 itemHeight = listView1.GetItemRect(0).Height;
@@ -371,15 +562,11 @@ namespace PSCap
             // mad hax
             int itemsDisplayed = listView1.DisplayRectangle.Height / itemHeight;
 
-            if (e.NewValue + itemsDisplayed >= listView1.Items.Count)
+            //if (e.NewValue + itemsDisplayed >= listView1.Items.Count)
+            if (e.NewValue + itemsDisplayed >= listView1.VirtualListSize)
                 followLast = true;
             else
                 followLast = false;
-        }
-
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            // TODO: handle the cases where we are attached, capturing, or have an unsaved capture
         }
 
         private void listView1_SelectedIndexChanged(object sender, EventArgs e)
@@ -389,19 +576,33 @@ namespace PSCap
                 Console.WriteLine("New selection " + s.ToString());
             }*/
 
+            richTextBox1.Clear();
             richTextBox1.SelectionColor = Color.Green;
-            richTextBox1.AppendText("Wat"); // dont remove this if you want colors
+            richTextBox1.AppendText("  "); // dont remove this if you want colors
 
             if (listView1.SelectedIndices.Count == 0)
                 richTextBox1.Text = ("No selection");
             else
-                richTextBox1.Text = "Item " + listView1.Items[listView1.SelectedIndices[0]].Text;
-            
+            {
+                RecordGame record = captureFile.getRecord(listView1.SelectedIndices[0]) as RecordGame;
+                GameRecordPacket gameRecord = record.Record as GameRecordPacket;
+
+                string bytes = "";
+                string name = ((PlanetSideMessageType)gameRecord.packet[0]).ToString();
+                foreach (byte b in gameRecord.packet)
+                    bytes += string.Format("{0:X2} ", b);
+
+                byteViewer1.SetBytes(gameRecord.packet.ToArray());
+
+                richTextBox1.AppendText(name + "\n");
+                richTextBox1.AppendText(bytes);
+
+            }
         }
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            //killThread = true;
+            this.Close();
         }
 
         private void capturePauseButton_Click(object sender, EventArgs e)
@@ -413,6 +614,20 @@ namespace PSCap
             }
             else
             {
+                if(captureFile != null && captureFile.isModified())
+                {
+                    DialogResult result = MessageBox.Show("You have an unsaved capture file. Would you like to save it before starting a new capture?",
+                        "Save capture file", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        if (!saveCaptureFile())
+                            return;
+                    }
+                    else if (result == DialogResult.Cancel)
+                        return;
+                }
+
                 capturePauseButton.Enabled = false;
                 captureLogic.capture();
             }
@@ -422,11 +637,19 @@ namespace PSCap
         {
             Log.Info("Got new UIEvent " + evt.ToString());
 
+            if(timeout)
+            {
+                Log.Info("UIEvent timed out");
+                return;
+            }
+
             switch (evt)
             {
                 case EventNotification.Attached:
+                    enterUIState(UIState.Attached);
                     break;
                 case EventNotification.Attaching:
+                    enterUIState(UIState.Attaching);
                     break;
                 case EventNotification.Detached:
                     enterUIState(UIState.Detached);
@@ -435,14 +658,20 @@ namespace PSCap
                     enterUIState(UIState.Detaching);
                     break;
                 case EventNotification.CaptureStarted:
+                    setCaptureFile(CaptureFile.Factory.New());
                     enterUIState(UIState.Capturing);
                     break;
                 case EventNotification.CaptureStarting:
                     break;
-                case EventNotification.CaptureStopped:
-                    enterUIState(UIState.Attached);
-                    break;
                 case EventNotification.CaptureStopping:
+                    break;
+                case EventNotification.CaptureStopped:
+                    this.SafeInvoke((asd) =>
+                    {
+                        captureFile.finalize();
+                    });
+
+                    enterUIState(UIState.Attached);
                     break;
             }
         }
@@ -457,6 +686,64 @@ namespace PSCap
 #else
             return true;
 #endif
+        }
+
+        private bool saveCaptureFile()
+        {
+            bool cancelled;
+            return saveCaptureFile(out cancelled);
+        }
+
+        private bool doSaveCaptureFile(string filename)
+        {
+            try
+            {
+                CaptureFile.Factory.ToFile(captureFile, filename);
+                setCaptureFile(captureFile);
+
+                return true;
+            }
+            catch (IOException e)
+            {
+                Log.Debug("Failed to save capture file: {0}", e.Message);
+                MessageBox.Show(e.Message,
+                    "Failed to save capture file", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        private bool saveCaptureFile(out bool canceled)
+        {
+            Log.Info("Save capture file");
+
+            if (captureFile.isFirstSave())
+                if (!showEditMetadata())
+                {
+                    canceled = true;
+                    return false;
+                }
+
+            SaveFileDialog saveFile = new SaveFileDialog();
+
+            saveFile.FileName = captureFile.getCaptureFilename();
+            saveFile.Filter = "Game Capture Files (*.gcap) | *.gcap";
+            saveFile.AddExtension = true;
+            saveFile.DefaultExt = ".gcap";
+
+            canceled = false;
+
+            DialogResult result = saveFile.ShowDialog();
+
+            if (result == DialogResult.OK)
+            {
+                return doSaveCaptureFile(saveFile.FileName);
+            }
+            else if(result == DialogResult.Cancel)
+            {
+                canceled = true;
+            }
+
+            return false;
         }
 
         private async void toolStripAttachButton_Click(object sender, EventArgs e)
@@ -474,7 +761,7 @@ namespace PSCap
             {
                 if (!isProcessSelected())
                 {
-                    Debug.Assert(false, "Attemped to attach without first selecting a process");
+                    Trace.Assert(false, "Attemped to attach without first selecting a process");
                     return;
                 }
 #if !WITHOUT_GAME
@@ -513,7 +800,7 @@ namespace PSCap
 
                                 if(!targetProcess.Process.HasExited)
                                 {
-                                    Log.Info("Sending close to process {0}", targetProcess);
+                                    Log.Info("Sending close to process {0} (this may fail)", targetProcess);
                                     targetProcess.Process.CloseMainWindow();
                                 }
                             }
@@ -526,20 +813,86 @@ namespace PSCap
                     
             }
         }
-    }
 
-    public static class ISynchronizeInvokeExtensions
-    {
-        public static void SafeInvoke<T>(this T @this, Action<T> action) where T : ISynchronizeInvoke
+        private void saveToolStripMenuItem_Click(object sender, EventArgs evt)
         {
-            if (@this.InvokeRequired)
-            {
-                @this.Invoke(action, new object[] { @this });
-            }
+            if (captureFile.isFirstSave())
+                saveCaptureFile();
             else
+                doSaveCaptureFile(captureFile.getCaptureFilename());
+        }
+
+        private void openToolStripMenuItem_Click(object sender, EventArgs evt)
+        {
+            if (captureFile != null && captureFile.isModified())
             {
-                action(@this);
+                DialogResult result = MessageBox.Show("You have an unsaved capture file. Would you like to save it before opening capture?",
+                    "Save capture file", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+
+                if (result == DialogResult.Yes)
+                {
+                    if (!saveCaptureFile())
+                        return;
+                }
+                else if (result == DialogResult.Cancel)
+                    return;
             }
+
+            Log.Info("Open capture");
+
+            OpenFileDialog openFile = new OpenFileDialog();
+            openFile.AddExtension = true;
+            openFile.Filter = "Game Capture Files (*.gcap)|*.gcap|All Files (*.*)|*.*";
+
+            if (openFile.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    setCaptureFile(CaptureFile.Factory.FromFile(openFile.FileName));
+                }
+                catch (InvalidCaptureFileException e)
+                {
+                    Log.Debug("Failed to open capture file: {0}", e.Message);
+                    MessageBox.Show(e.Message, "Could not open capture file", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            saveCaptureFile();
+        }
+
+        private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            //Trace.Assert(false, "test");
+            AboutBox about = new AboutBox();
+            about.ShowDialog();
+        }
+
+        private bool showEditMetadata()
+        {
+            Trace.Assert(captureFile != null, "Capture file is null");
+
+            EditMetadata editMeta = new EditMetadata(captureFile);
+            DialogResult result = editMeta.ShowDialog(this);
+
+            if (result == DialogResult.OK)
+            {
+                captureFile.setCaptureName(editMeta.CaptureNameResult);
+                captureFile.setCaptureDescription(editMeta.DescriptionResult);
+
+                updateCaptureFileState();
+
+                return true;
+            }
+            
+            return false;
+        }
+
+        private void copyToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            showEditMetadata();
         }
     }
 }

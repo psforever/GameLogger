@@ -15,10 +15,23 @@ namespace PSCap
     abstract class GameRecord
     {
         public GameRecordType type { get; private set; }
+        private ulong recordTime;
+
+        public abstract long getEstimatedSize();
 
         protected abstract bool decode(BitStream stream);
 
         protected abstract List<byte> encode();
+
+        public ulong getRecordTime()
+        {
+            return recordTime;
+        }
+
+        public void setTimeStamp(ulong ticks)
+        {
+            recordTime = ticks;
+        }
 
         public static class Factory
         {
@@ -67,6 +80,10 @@ namespace PSCap
                 // handle any decoding errors
                 try
                 {
+                    // first decode the record timestamp
+                    // will fail if it fails
+                    rec.setTimeStamp(BitOps.ReadUInt64(stream));
+
                     bool decodeResult = rec.decode(stream);
 
                     if (!decodeResult)
@@ -83,7 +100,6 @@ namespace PSCap
 
             public static List<byte> Encode(GameRecord rec)
             {
-
                 List<byte> bytes = null;
 
                 try
@@ -95,6 +111,11 @@ namespace PSCap
                     Log.Error("Failed to encode GameRecord: {0}", e.Message);
                     return null;
                 }
+
+                // add in the timestamp
+                List<byte> timeStamp = new List<byte>();
+                BitOps.WriteUInt64(timeStamp, rec.getRecordTime());
+                bytes.InsertRange(0, timeStamp);
 
                 // add in the opcode
                 bytes.Insert(0, (byte)rec.type);
@@ -116,6 +137,11 @@ namespace PSCap
     
     class GameRecordCryptoState : GameRecord
     {
+        public override long getEstimatedSize()
+        {
+            return 0;
+        }
+
         protected override bool decode(BitStream stream)
         {
             //reason = (DisconnectReason)BitOps::ReadByte(stream);
@@ -150,6 +176,11 @@ namespace PSCap
         public PacketType packetType;
         public PacketDestination packetDestination;
         public List<byte> packet;
+
+        public override long getEstimatedSize()
+        {
+            return packet.Count + 2 + sizeof(ulong);
+        }
 
         protected override bool decode(BitStream stream)
         {

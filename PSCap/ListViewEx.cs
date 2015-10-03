@@ -8,6 +8,7 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using System.Reflection;
+using System.Diagnostics;
 
 namespace PSCap
 {
@@ -37,6 +38,7 @@ namespace PSCap
         private const int LVM_FIRST = 0x1000;
         private const int LVM_SCROLL = LVM_FIRST + 0x20;
         private const int LVM_SETGROUPINFO = (LVM_FIRST + 147);
+        private const int LVM_SETITEMCOUNT = LVM_FIRST + 0x2f;
 
         public enum ListViewExtendedStyles
         {
@@ -151,7 +153,19 @@ namespace PSCap
             SB_ENDSCROLL = 8
         }
 
+        private static FieldInfo _internalVirtualListSizeField;
         private int lastPos = 0;
+
+        public ListViewEx()
+        {
+            _internalVirtualListSizeField = typeof(ListView).GetField("virtualListSize", System.Reflection.BindingFlags.NonPublic | BindingFlags.Instance);
+
+            if (_internalVirtualListSizeField == null)
+            {
+                string msg = "Private field virtualListSize in type System.Windows.Forms.ListView is not found. Workaround is incompatible with installed .NET Framework version, running without workaround.";
+                Trace.WriteLine(msg);
+            }
+        }
 
         protected override void WndProc(ref Message m)
         {
@@ -232,6 +246,28 @@ namespace PSCap
             styles -= styles & ListViewExtendedStyles.BorderSelect;
             // write new style
             SendMessage(this.Handle, (int)ListViewMessages.SetExtendedStyle, 0, (int)styles);
+        }
+
+        public void SetVirtualListSize(int size)
+        {
+            // if workaround incompatible with current framework version (usually MONO)
+            if (_internalVirtualListSizeField == null)
+            {
+                VirtualListSize = size;
+            }
+            else
+            {
+                if (size < 0)
+                {
+                    throw new ArgumentException("ListViewVirtualListSizeInvalidArgument");
+                }
+
+                _internalVirtualListSizeField.SetValue(this, size);
+                if ((base.IsHandleCreated && this.VirtualMode) && !base.DesignMode)
+                {
+                    SendMessage(this.Handle, LVM_SETITEMCOUNT, new IntPtr(size), new IntPtr(2));
+                }
+            }
         }
 
         public int ScrollPosition
