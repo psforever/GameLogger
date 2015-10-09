@@ -264,13 +264,13 @@ namespace PSCap
 
             await Task.Factory.StartNew(() =>
             {
+                pendingMessageState = PendingMessageState.StartCaptureSent;
+                notifyEvent(EventNotification.CaptureStarting);
+
                 pipeServer.writeMessage(DllMessage.Factory.Encode(msg).data, (result) =>
                 {
                     if (!result)
                         return;
-
-                    notifyEvent(EventNotification.CaptureStarting);
-                    pendingMessageState = PendingMessageState.StartCaptureSent;
                 }, TimeSpan.FromMilliseconds(1000));
             });
         }
@@ -290,13 +290,13 @@ namespace PSCap
                 if (callback != null)
                     pendingMessageCallback = callback;
 
+                notifyEvent(EventNotification.CaptureStopping);
+                pendingMessageState = PendingMessageState.StopCaptureSent;
+
                 pipeServer.writeMessage(DllMessage.Factory.Encode(msg).data, (result) =>
                 {
                     if (!result)
                         return;
-
-                    notifyEvent(EventNotification.CaptureStopping);
-                    pendingMessageState = PendingMessageState.StopCaptureSent;
                 }, TimeSpan.FromMilliseconds(1000));
             });
         }

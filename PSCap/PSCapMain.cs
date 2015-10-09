@@ -629,6 +629,9 @@ namespace PSCap
                 }
 
                 capturePauseButton.Enabled = false;
+
+                // create a new capture file
+                setCaptureFile(CaptureFile.Factory.New());
                 captureLogic.capture();
             }
         }
@@ -658,7 +661,6 @@ namespace PSCap
                     enterUIState(UIState.Detaching);
                     break;
                 case EventNotification.CaptureStarted:
-                    setCaptureFile(CaptureFile.Factory.New());
                     enterUIState(UIState.Capturing);
                     break;
                 case EventNotification.CaptureStarting:
