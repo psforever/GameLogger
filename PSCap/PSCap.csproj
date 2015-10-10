@@ -92,6 +92,12 @@
       <DependentUpon>EditMetadata.cs</DependentUpon>
     </Compile>
     <Compile Include="GameRecord.cs" />
+    <Compile Include="HotkeysDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="HotkeysDialog.Designer.cs">
+      <DependentUpon>HotkeysDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="Log.cs" />
     <Compile Include="PipeServer.cs" />
     <Compile Include="PlanetSideMessage.cs" />
@@ -115,6 +121,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="EditMetadata.resx">
       <DependentUpon>EditMetadata.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="HotkeysDialog.resx">
+      <DependentUpon>HotkeysDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="PSCapMain.resx">
       <DependentUpon>PSCapMain.cs</DependentUpon>

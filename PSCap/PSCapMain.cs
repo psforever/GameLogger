@@ -57,6 +57,9 @@ namespace PSCap
             this.loggerId = loggerId;
             InitializeComponent();
 
+            // required for hotkey hooking with key modifiers
+            this.KeyPreview = true;
+
             byteViewer1 = new ByteViewer();
             byteViewer1.Dock = System.Windows.Forms.DockStyle.Fill;
             byteViewer1.Anchor = AnchorStyles.Left | AnchorStyles.Top;
@@ -96,7 +99,7 @@ namespace PSCap
             initListView();
         }
 
-        private async void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.ApplicationExitCall)
                 return;
@@ -134,6 +137,19 @@ namespace PSCap
             }
 
             Log.Info("Form closing");
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            switch(keyData)
+            {
+                case Keys.F9:
+                    if (capturePauseButton.Enabled)
+                        capturePauseButton_Click(this, new EventArgs());
+                    return true;
+                default:
+                    return base.ProcessCmdKey(ref msg, keyData);
+            }
         }
 
         private void initListView()
@@ -230,7 +246,7 @@ namespace PSCap
             switch(reason)
             {
                 case DisableProcessSelectionReason.NoInstances:
-                    Console.WriteLine("Disabling process selection due to no instances");
+                    Log.Debug("Disabling process selection due to no instances");
                     this.SafeInvoke(delegate
                     {
                         toolStripInstance.Items.Clear();
@@ -243,7 +259,7 @@ namespace PSCap
                     });
                     break;
                 case DisableProcessSelectionReason.Attached:
-                    Console.WriteLine("Disabling process selection because we're attached");
+                    Log.Debug("Disabling process selection because we're attached");
                     this.SafeInvoke(delegate
                     {
                         toolStripInstance.Enabled = false;
@@ -318,6 +334,8 @@ namespace PSCap
                     saveAsToolStripMenuItem.Enabled = false;
                     copyToolStripMenuItem.Enabled = false;
                     openToolStripMenuItem.Enabled = true;
+
+                    setCaptureFileName("");
                     return;
                 }
 
@@ -330,10 +348,19 @@ namespace PSCap
                     return;
                 }
 
+                string filename = Path.GetFileName(captureFile.getCaptureFilename());
+
                 if (captureFile.isModified())
+                {
                     saveToolStripMenuItem.Enabled = true;
+                    filename += " (modified)";
+                }
                 else
+                {
                     saveToolStripMenuItem.Enabled = false;
+                }
+
+                setCaptureFileName(filename);
 
                 saveAsToolStripMenuItem.Enabled = true;
                 copyToolStripMenuItem.Enabled = true;
@@ -356,7 +383,6 @@ namespace PSCap
                     // set the estimate before updating the record count
                     setRecordSizeEstimate(0);
                     setRecordCount(0);
-                    setCaptureFileName("");
                 }
                 else
                 {
@@ -369,8 +395,6 @@ namespace PSCap
 
                     setRecordSizeEstimate(estimatedSize);
                     setRecordCount(cap.getNumRecords());
-
-                    setCaptureFileName(Path.GetFileName(cap.getCaptureFilename()));
                 }
                 
             });
@@ -546,11 +570,8 @@ namespace PSCap
 
         private void listView1_OnScroll(object sender, ScrollEventArgs e)
         {
-            //Console.WriteLine("Scroll event old " + e.OldValue + ", new " + e.NewValue + ", target " + listView1.VirtualListSize);
-
             int itemHeight;
-
-            //if (listView1.Items.Count == 0)
+            
             if (listView1.VirtualListSize == 0)
                 itemHeight = 0;
             else
@@ -561,8 +582,7 @@ namespace PSCap
 
             // mad hax
             int itemsDisplayed = listView1.DisplayRectangle.Height / itemHeight;
-
-            //if (e.NewValue + itemsDisplayed >= listView1.Items.Count)
+            
             if (e.NewValue + itemsDisplayed >= listView1.VirtualListSize)
                 followLast = true;
             else
@@ -895,6 +915,12 @@ namespace PSCap
         private void copyToolStripMenuItem_Click(object sender, EventArgs e)
         {
             showEditMetadata();
+        }
+
+        private void hotkeysToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            HotkeysDialog dialog = new HotkeysDialog();
+            dialog.ShowDialog();
         }
     }
 }

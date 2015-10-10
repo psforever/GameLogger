@@ -28,7 +28,7 @@ namespace PSCap
 
         public static void Warning(string fmt, params object[] args)
         {
-            DoLog("warning", fmt, args);
+            DoLog("warn", fmt, args);
         }
 
         public static void Fatal(string fmt, params object[] args)
@@ -38,7 +38,8 @@ namespace PSCap
 
         private static void DoLog(string prefix, string fmt, params object[] args)
         {
-            Raw(string.Format("[" + prefix + "] " + fmt, args) + Environment.NewLine);
+            string time = string.Format("{0:yyyy-MM-dd hh:mm:ss tt}", DateTime.Now);
+            Raw(string.Format("[{0} {1,5}] " + fmt, time, prefix, args) + Environment.NewLine);
         }
 
         public static void Raw(string data)
