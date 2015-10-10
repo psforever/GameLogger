@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace PSCap
 {
@@ -91,7 +92,7 @@ namespace PSCap
                 return file;
             }
 
-            public static CaptureFile FromFile(string filename)
+            public static CaptureFile FromFile(string filename, Form parent, ProgressDialog progress)
             {
                 CaptureFile cap = new CaptureFile();
 
@@ -109,11 +110,15 @@ namespace PSCap
                         cap.unixTimeStart, cap.unixTimeEnd, cap.captureRevision, cap.GUID, header.RecordCount);
 
                     // print metadata and read records
-                    byte[] buffer = new byte[4096];
+                    byte[] buffer = new byte[131072];
                     BitStream stream = new BitStream();
                     bool metaFound = false;
 
                     // start deserializing records
+                    int stepStride = (int)header.RecordCount / 20;
+                    int nextStepPoint = stepStride;
+
+                    parent.SafeInvoke((a) => progress.ProgressParams((int)header.RecordCount, stepStride));
 
                     for (UInt64 i = 0; i < header.RecordCount; i++)
                     {
@@ -124,7 +129,8 @@ namespace PSCap
                             switch (rec.type)
                             {
                                 case RecordType.GAME:
-                                    //Log.Debug("Game record {0}", i);
+                                    //if (i % 1000 == 0)
+                                    //    Log.Debug("Game record {0}", i);
                                     cap.addRecord(rec);
                                     break;
                                 case RecordType.METADATA:
@@ -136,6 +142,12 @@ namespace PSCap
                                     cap.captureName = meta.captureName;
                                     metaFound = true;
                                     break;
+                            }
+
+                            if((int)i >= nextStepPoint)
+                            {
+                                nextStepPoint += stepStride;
+                                parent.SafeInvoke((a) => progress.Step());
                             }
                         }
                         catch(IOException e)
@@ -239,9 +251,16 @@ namespace PSCap
 
             private static Record ReadOneRecord(FileStream file, byte[] buffer, BitStream streamBuffer)
             {
+                // be greedy and use the cache
+                Record r = TryDecodeRecord(streamBuffer);
+
+                if (r != null)
+                    return r;
+
                 bool eof = false;
                 int dataReady = 0;
 
+                // else, read some data in first
                 while (true)
                 {
                     int amtRead = file.Read(buffer, 0, buffer.Length);
@@ -257,35 +276,42 @@ namespace PSCap
                         streamBuffer.append(buffer, 0, amtRead);
                         //Log.Debug("CaptureFile.Read {0} bytes, buffered {1}", amtRead, streamBuffer.sizeLeft());
                     }
+                    
+                    Record rec = TryDecodeRecord(streamBuffer);
 
-                    int startPos = streamBuffer.position();
-
-                    try
-                    {
-                        //Log.Debug(Util.HexDump(streamBuffer.data));
-                        Record rec = Record.Factory.Decode(streamBuffer);
+                    if (rec != null)
                         return rec;
-                    }
-                    catch (NeedMoreDataException e)
-                    {
-                        //Log.Debug("CaptureFile.ReadOneRecord need more data {0}", e.bytesNeeded);
+                    
+                    if (eof)
+                        throw new InvalidCaptureFileException("Unexpected end of capture file");
+                }
+            }
 
-                        if (eof)
-                            throw new InvalidCaptureFileException("Unexpected end of capture file", e);
+            private static Record TryDecodeRecord(BitStream streamBuffer)
+            {
+                if (streamBuffer.size() <= 0)
+                    return null;
 
-                        // undo any failed processing
-                        streamBuffer.seek(startPos);
+                int startPos = streamBuffer.position();
 
-                        continue;
-                    }
-                    catch (InvalidOperationException e)
-                    {
-                        throw new InvalidCaptureFileException(string.Format("General record decoding error"), e);
-                    }
-                    catch (ArgumentException e)
-                    {
-                        throw new InvalidCaptureFileException(string.Format("Invalid record type ({0})", e.Message), e);
-                    }
+                try
+                {
+                    Record rec = Record.Factory.Decode(streamBuffer);
+                    return rec;
+                }
+                catch (NeedMoreDataException e)
+                {
+                    // undo any failed processing
+                    streamBuffer.seek(startPos);
+                    return null;
+                }
+                catch (InvalidOperationException e)
+                {
+                    throw new InvalidCaptureFileException(string.Format("General record decoding error"), e);
+                }
+                catch (ArgumentException e)
+                {
+                    throw new InvalidCaptureFileException(string.Format("Invalid record type ({0})", e.Message), e);
                 }
             }
 

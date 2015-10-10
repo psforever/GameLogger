@@ -378,16 +378,14 @@ namespace PSCap
 
                 if (cap == null)
                 {
-                    updateCaptureFileState();
-
                     // set the estimate before updating the record count
                     setRecordSizeEstimate(0);
                     setRecordCount(0);
+
+                    updateCaptureFileState();
                 }
                 else
                 {
-                    updateCaptureFileState();
-
                     ulong estimatedSize = 0;
 
                     foreach (Record r in cap.getRecords())
@@ -395,8 +393,10 @@ namespace PSCap
 
                     setRecordSizeEstimate(estimatedSize);
                     setRecordCount(cap.getNumRecords());
+
+                    updateCaptureFileState();
                 }
-                
+
             });
         }
 
@@ -844,7 +844,7 @@ namespace PSCap
                 doSaveCaptureFile(captureFile.getCaptureFilename());
         }
 
-        private void openToolStripMenuItem_Click(object sender, EventArgs evt)
+        private async void openToolStripMenuItem_Click(object sender, EventArgs evt)
         {
             if (captureFile != null && captureFile.isModified())
             {
@@ -868,15 +868,29 @@ namespace PSCap
 
             if (openFile.ShowDialog() == DialogResult.OK)
             {
-                try
+                BackgroundWorker worker = new BackgroundWorker();
+                ProgressDialog progress = new ProgressDialog("Loading capture file");
+                progress.ProgressTemplate("Loading records {value}/{max}...");
+
+                // NOTE: hack alert. BeginInvoke merely posts this to the message pump
+                this.BeginInvoke(new Action(() => progress.ShowDialog()));
+
+                await Task.Run(delegate
                 {
-                    setCaptureFile(CaptureFile.Factory.FromFile(openFile.FileName));
-                }
-                catch (InvalidCaptureFileException e)
-                {
-                    Log.Debug("Failed to open capture file: {0}", e.Message);
-                    MessageBox.Show(e.Message, "Could not open capture file", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                    try
+                    {
+                        CaptureFile newCapFile = CaptureFile.Factory.FromFile(openFile.FileName, this, progress);
+                        setCaptureFile(newCapFile);
+                    }
+                    catch (InvalidCaptureFileException e)
+                    {
+                        Log.Debug("Failed to open capture file: {0}", e.Message);
+                        MessageBox.Show(e.Message, "Could not open capture file",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+
+                    this.SafeInvoke((a) => progress.Done());
+                });
             }
         }
 
