@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -68,8 +69,7 @@ namespace PSCap
 
         public void seek(int pos)
         {
-            if (pos < 0 || pos >= data.Length)
-                throw new ArgumentException("seek position out of bounds");
+            Trace.Assert(pos >= 0 && pos <= data.Length, "seek position out of bounds");
 
             nextByte = pos;
         }
