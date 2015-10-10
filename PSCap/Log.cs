@@ -39,7 +39,8 @@ namespace PSCap
         private static void DoLog(string prefix, string fmt, params object[] args)
         {
             string time = string.Format("{0:yyyy-MM-dd hh:mm:ss tt}", DateTime.Now);
-            Raw(string.Format("[{0} {1,5}] " + fmt, time, prefix, args) + Environment.NewLine);
+            string note = string.Format("[{0} {1,5}] ", time, prefix);
+            Raw(string.Format(note + fmt, args) + Environment.NewLine);
         }
 
         public static void Raw(string data)
