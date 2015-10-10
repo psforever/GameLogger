@@ -30,7 +30,9 @@ namespace PSCap
                 return;
             }
 
+#if !DEBUG
             setupErrorHandling();
+#endif
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
