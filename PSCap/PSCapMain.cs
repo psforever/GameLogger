@@ -164,8 +164,9 @@ namespace PSCap
             //Add column header
             listView1.Columns.Add("Event", 150);
             listView1.Columns.Add("Time", 100);
-            listView1.Columns.Add("Data", 100);
-            
+            listView1.Columns.Add("Type", 150);
+            listView1.Columns.Add("Size", 30);
+
             eventImageList.Images.Add(global::PSCap.Properties.Resources.arrow_Up_16xLG_green);
             eventImageList.Images.Add(global::PSCap.Properties.Resources.arrow_Down_16xLG_red);
             eventImageList.Images.Add(global::PSCap.Properties.Resources.lock_16xLG);
@@ -547,7 +548,7 @@ namespace PSCap
         {
             RecordGame i = captureFile.getRecord(e.ItemIndex) as RecordGame;
 
-            string[] row = new string[3];
+            string[] row = new string[4];
 
             double time = i.getSecondsSinceStart((uint)captureFile.getStartTime());
 
@@ -563,7 +564,9 @@ namespace PSCap
             row[0] = eventName;
             row[1] = string.Format("{0:0.000000}", time);
             row[2] = bytes;
-            
+            row[3] = record.packet.Count.ToString();
+
+
             e.Item = new ListViewItem(row);
             e.Item.ImageIndex = record.packetDestination == GameRecordPacket.PacketDestination.Server ? 0 : 1;
         }
