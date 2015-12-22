@@ -1,16 +1,14 @@
-﻿* Log to console and to file with a timestamp
+﻿TODO
+====
+* Log to console and to file with a timestamp
 * Find and limit race conditions
 * Correctly handle when PlanetSide exits unexpectedly and when the DLL uninjects expectedly
 * Add timeouts to start/stop capture events
   - Track down the issue where an outstanding capture event will sometimes never end
   - The suspected cause is that there can only be one outstanding packet. What about promises?
 * Look into capturing screenshots directly from the game (no DX hooking needed, just call the function)
-
-PreRelease Check
-================
-* Verify that no debugging symbols are included
-* Verify that no usernames or identifying strings are included
-* Check to make sure that the tools work well stand-alone
+* We cannot prevent double attaching to a process. It messes things up for the process
+  - possibly create a process local mutex to prevent multiple DLLs from
 
 BUGS
 ====
@@ -24,7 +22,7 @@ Callstack=   at System.Environment.GetStackTrace(Exception e, Boolean needFileIn
    at System.Diagnostics.TraceListener.WriteFooter(TraceEventCache eventCache)
    at System.Diagnostics.TraceListener.TraceEvent(TraceEventCache eventCache, String source, TraceEventType eventType, Int32 id, String format, Object[] args)
    at System.Diagnostics.TraceInternal.TraceEvent(TraceEventType eventType, Int32 id, String format, Object[] args)
-   at PSCap.Program.CatchUnhandledException(Object sender, ThreadExceptionEventArgs e) in C:\Users\chord\documents\visual studio 2015\Projects\PSCap\PSCap\Program.cs:line 56
+   at PSCap.Program.CatchUnhandledException(Object sender, ThreadExceptionEventArgs e) in C:\Users\***REMOVED***\documents\visual studio 2015\Projects\PSCap\PSCap\Program.cs:line 56
    at System.Windows.Forms.Application.ThreadContext.OnThreadException(Exception t)
    at System.Windows.Forms.Control.WndProcException(Exception e)
    at System.Windows.Forms.Control.ControlNativeWindow.OnThreadException(Exception e)
@@ -34,7 +32,7 @@ Callstack=   at System.Environment.GetStackTrace(Exception e, Boolean needFileIn
    at System.Windows.Forms.Control.DefWndProc(Message& m)
    at System.Windows.Forms.ListView.WmMouseDown(Message& m, MouseButtons button, Int32 clicks)
    at System.Windows.Forms.ListView.WndProc(Message& m)
-   at PSCap.ListViewEx.WndProc(Message& m) in C:\Users\chord\documents\visual studio 2015\Projects\PSCap\PSCap\ListViewEx.cs:line 174
+   at PSCap.ListViewEx.WndProc(Message& m) in C:\Users\***REMOVED***\documents\visual studio 2015\Projects\PSCap\PSCap\ListViewEx.cs:line 174
    at System.Windows.Forms.Control.ControlNativeWindow.OnMessage(Message& m)
    at System.Windows.Forms.Control.ControlNativeWindow.WndProc(Message& m)
    at System.Windows.Forms.NativeWindow.Callback(IntPtr hWnd, Int32 msg, IntPtr wparam, IntPtr lparam)
@@ -43,7 +41,7 @@ Callstack=   at System.Environment.GetStackTrace(Exception e, Boolean needFileIn
    at System.Windows.Forms.Application.ThreadContext.RunMessageLoopInner(Int32 reason, ApplicationContext context)
    at System.Windows.Forms.Application.ThreadContext.RunMessageLoop(Int32 reason, ApplicationContext context)
    at System.Windows.Forms.Application.Run(Form mainForm)
-   at PSCap.Program.Main() in C:\Users\chord\documents\visual studio 2015\Projects\PSCap\PSCap\Program.cs:line 38
+   at PSCap.Program.Main() in C:\Users\***REMOVED***\documents\visual studio 2015\Projects\PSCap\PSCap\Program.cs:line 38
    at System.AppDomain._nExecuteAssembly(RuntimeAssembly assembly, String[] args)
    at System.AppDomain.ExecuteAssembly(String assemblyFile, Evidence assemblySecurity, String[] args)
    at Microsoft.VisualStudio.HostingProcess.HostProc.RunUsersAssembly()
@@ -52,6 +50,9 @@ Callstack=   at System.Environment.GetStackTrace(Exception e, Boolean needFileIn
    at System.Threading.ExecutionContext.Run(ExecutionContext executionContext, ContextCallback callback, Object state, Boolean preserveSyncCtx)
    at System.Threading.ExecutionContext.Run(ExecutionContext executionContext, ContextCallback callback, Object state)
    at System.Threading.ThreadHelper.ThreadStart()
- 
-------------
-* We cannot prevent double attaching to a process. It messes things up for the process
+
+PreRelease Check
+================
+* Verify that no debugging symbols are included
+* Verify that no usernames or identifying strings are included
+* Check to make sure that the tools work well stand-alone

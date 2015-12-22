@@ -41,7 +41,6 @@ namespace PSCap
         ProcessScanner scanner = new ProcessScanner("PlanetSide");
         // manages the state of the logger and the transitions from detached attached etc
         CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, Path.Combine(Environment.CurrentDirectory, "pslog.dll"));
-        //CaptureLogic captureLogic = new CaptureLogic("PSLogServer" + Program.LoggerId, "C:\\Users\\chord\\Documents\\code\\psemu\\src\\tools\\dll\\pslog\\bin\\Release\\pslog.dll" );
         CaptureFile captureFile = null;
         ulong estimatedCaptureSize = 0;
 
