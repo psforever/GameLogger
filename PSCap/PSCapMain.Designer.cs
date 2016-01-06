@@ -31,6 +31,11 @@
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PSCapMain));
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.listView1 = new PSCap.ListViewEx();
+            this.flowLayoutPanel1 = new System.Windows.Forms.FlowLayoutPanel();
+            this.hexLineNumbers = new System.Windows.Forms.TextBox();
+            this.hexDisplay = new System.Windows.Forms.TextBox();
+            this.hexCharDisplay = new System.Windows.Forms.TextBox();
             this.richTextBox1 = new System.Windows.Forms.RichTextBox();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -46,6 +51,7 @@
             this.customizeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.helpToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.hotkeysToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.eventImageList = new System.Windows.Forms.ImageList(this.components);
             this.toolStripContainer1 = new System.Windows.Forms.ToolStripContainer();
@@ -62,12 +68,11 @@
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.capturePauseButton = new System.Windows.Forms.ToolStripButton();
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
-            this.hotkeysToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.listView1 = new PSCap.ListViewEx();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
             this.splitContainer1.SuspendLayout();
+            this.flowLayoutPanel1.SuspendLayout();
             this.menuStrip1.SuspendLayout();
             this.toolStripContainer1.BottomToolStripPanel.SuspendLayout();
             this.toolStripContainer1.ContentPanel.SuspendLayout();
@@ -90,10 +95,76 @@
             // 
             // splitContainer1.Panel2
             // 
+            this.splitContainer1.Panel2.Controls.Add(this.flowLayoutPanel1);
             this.splitContainer1.Panel2.Controls.Add(this.richTextBox1);
             this.splitContainer1.Size = new System.Drawing.Size(771, 291);
             this.splitContainer1.SplitterDistance = 137;
             this.splitContainer1.TabIndex = 2;
+            // 
+            // listView1
+            // 
+            this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listView1.FullRowSelect = true;
+            this.listView1.Location = new System.Drawing.Point(0, 0);
+            this.listView1.MultiSelect = false;
+            this.listView1.Name = "listView1";
+            this.listView1.ScrollPosition = 0;
+            this.listView1.Size = new System.Drawing.Size(771, 137);
+            this.listView1.TabIndex = 0;
+            this.listView1.UseCompatibleStateImageBehavior = false;
+            this.listView1.onScroll += new System.Windows.Forms.ScrollEventHandler(this.listView1_OnScroll);
+            this.listView1.RetrieveVirtualItem += new System.Windows.Forms.RetrieveVirtualItemEventHandler(this.listView1_RetrieveVirtualItem);
+            this.listView1.SelectedIndexChanged += new System.EventHandler(this.listView1_SelectedIndexChanged);
+            // 
+            // flowLayoutPanel1
+            // 
+            this.flowLayoutPanel1.Controls.Add(this.hexLineNumbers);
+            this.flowLayoutPanel1.Controls.Add(this.hexDisplay);
+            this.flowLayoutPanel1.Controls.Add(this.hexCharDisplay);
+            this.flowLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowLayoutPanel1.Location = new System.Drawing.Point(0, 0);
+            this.flowLayoutPanel1.Name = "flowLayoutPanel1";
+            this.flowLayoutPanel1.Size = new System.Drawing.Size(771, 150);
+            this.flowLayoutPanel1.TabIndex = 1;
+            // 
+            // hexLineNumbers
+            // 
+            this.hexLineNumbers.BackColor = System.Drawing.SystemColors.Control;
+            this.hexLineNumbers.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.hexLineNumbers.Enabled = false;
+            this.hexLineNumbers.Font = new System.Drawing.Font("Courier New", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.hexLineNumbers.Location = new System.Drawing.Point(3, 5);
+            this.hexLineNumbers.Margin = new System.Windows.Forms.Padding(3, 5, 3, 3);
+            this.hexLineNumbers.Multiline = true;
+            this.hexLineNumbers.Name = "hexLineNumbers";
+            this.hexLineNumbers.Size = new System.Drawing.Size(67, 129);
+            this.hexLineNumbers.TabIndex = 0;
+            // 
+            // hexDisplay
+            // 
+            this.hexDisplay.BackColor = System.Drawing.SystemColors.Window;
+            this.hexDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.hexDisplay.Font = new System.Drawing.Font("Courier New", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.hexDisplay.Location = new System.Drawing.Point(73, 3);
+            this.hexDisplay.Margin = new System.Windows.Forms.Padding(0, 3, 0, 3);
+            this.hexDisplay.Multiline = true;
+            this.hexDisplay.Name = "hexDisplay";
+            this.hexDisplay.ReadOnly = true;
+            this.hexDisplay.Size = new System.Drawing.Size(380, 130);
+            this.hexDisplay.TabIndex = 4;
+            // 
+            // hexCharDisplay
+            // 
+            this.hexCharDisplay.BackColor = System.Drawing.SystemColors.Window;
+            this.hexCharDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.hexCharDisplay.Font = new System.Drawing.Font("Courier New", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.hexCharDisplay.Location = new System.Drawing.Point(453, 3);
+            this.hexCharDisplay.Margin = new System.Windows.Forms.Padding(0, 3, 3, 3);
+            this.hexCharDisplay.Multiline = true;
+            this.hexCharDisplay.Name = "hexCharDisplay";
+            this.hexCharDisplay.ReadOnly = true;
+            this.hexCharDisplay.Size = new System.Drawing.Size(140, 130);
+            this.hexCharDisplay.TabIndex = 2;
             // 
             // richTextBox1
             // 
@@ -200,7 +271,7 @@
             this.optionsToolStripMenuItem});
             this.toolsToolStripMenuItem.Enabled = false;
             this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
-            this.toolsToolStripMenuItem.Size = new System.Drawing.Size(47, 20);
+            this.toolsToolStripMenuItem.Size = new System.Drawing.Size(48, 20);
             this.toolsToolStripMenuItem.Text = "&Tools";
             this.toolsToolStripMenuItem.Visible = false;
             // 
@@ -225,10 +296,17 @@
             this.helpToolStripMenuItem.Size = new System.Drawing.Size(44, 20);
             this.helpToolStripMenuItem.Text = "&Help";
             // 
+            // hotkeysToolStripMenuItem
+            // 
+            this.hotkeysToolStripMenuItem.Name = "hotkeysToolStripMenuItem";
+            this.hotkeysToolStripMenuItem.Size = new System.Drawing.Size(126, 22);
+            this.hotkeysToolStripMenuItem.Text = "Hotkeys...";
+            this.hotkeysToolStripMenuItem.Click += new System.EventHandler(this.hotkeysToolStripMenuItem_Click);
+            // 
             // aboutToolStripMenuItem
             // 
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(126, 22);
             this.aboutToolStripMenuItem.Text = "&About...";
             this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
             // 
@@ -368,28 +446,6 @@
             this.capturePauseButton.Text = "Capture";
             this.capturePauseButton.Click += new System.EventHandler(this.capturePauseButton_Click);
             // 
-            // hotkeysToolStripMenuItem
-            // 
-            this.hotkeysToolStripMenuItem.Name = "hotkeysToolStripMenuItem";
-            this.hotkeysToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
-            this.hotkeysToolStripMenuItem.Text = "Hotkeys...";
-            this.hotkeysToolStripMenuItem.Click += new System.EventHandler(this.hotkeysToolStripMenuItem_Click);
-            // 
-            // listView1
-            // 
-            this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.listView1.FullRowSelect = true;
-            this.listView1.Location = new System.Drawing.Point(0, 0);
-            this.listView1.MultiSelect = false;
-            this.listView1.Name = "listView1";
-            this.listView1.ScrollPosition = 0;
-            this.listView1.Size = new System.Drawing.Size(771, 137);
-            this.listView1.TabIndex = 0;
-            this.listView1.UseCompatibleStateImageBehavior = false;
-            this.listView1.onScroll += new System.Windows.Forms.ScrollEventHandler(this.listView1_OnScroll);
-            this.listView1.RetrieveVirtualItem += new System.Windows.Forms.RetrieveVirtualItemEventHandler(this.listView1_RetrieveVirtualItem);
-            this.listView1.SelectedIndexChanged += new System.EventHandler(this.listView1_SelectedIndexChanged);
-            // 
             // PSCapMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -405,6 +461,8 @@
             this.splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
+            this.flowLayoutPanel1.ResumeLayout(false);
+            this.flowLayoutPanel1.PerformLayout();
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.toolStripContainer1.BottomToolStripPanel.ResumeLayout(false);
@@ -457,6 +515,10 @@
         private System.Windows.Forms.ToolStripStatusLabel recordCountLabel;
         private System.ComponentModel.BackgroundWorker backgroundWorker1;
         private System.Windows.Forms.ToolStripMenuItem hotkeysToolStripMenuItem;
+        private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel1;
+        private System.Windows.Forms.TextBox hexLineNumbers;
+        private System.Windows.Forms.TextBox hexCharDisplay;
+        private System.Windows.Forms.TextBox hexDisplay;
     }
 }
 
