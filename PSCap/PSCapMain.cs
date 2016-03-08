@@ -152,9 +152,11 @@ namespace PSCap
             listView1.EnableDoubleBuffer();
 
             //Add column header
-            listView1.Columns.Add("Event", 150);
+            listView1.Columns.Add("ID", 80);
             listView1.Columns.Add("Time", 100);
-            listView1.Columns.Add("Type", 150);
+            listView1.Columns.Add("Record Type", 150);
+            listView1.Columns.Add("Packet Type", 80);
+            listView1.Columns.Add("Packet Name", 170);
             listView1.Columns.Add("Size", 30);
 
             eventImageList.Images.Add(global::PSCap.Properties.Resources.arrow_Up_16xLG_green);
@@ -541,24 +543,51 @@ namespace PSCap
         {
             RecordGame i = captureFile.getRecord(e.ItemIndex) as RecordGame;
 
-            string[] row = new string[4];
-
             double time = i.getSecondsSinceStart((uint)captureFile.getStartTime());
-
             GameRecordPacket record = i.Record as GameRecordPacket;
 
-            string bytes = "";
-            bytes = ((PlanetSideGamePacketOpcode)record.packet[0]).ToString();
-            //foreach (byte b in record.packet)
-            //    bytes += string.Format("{0:X2} ", b);
+            string recordName = record.packetDestination == GameRecordPacket.PacketDestination.Client ? "Received Packet" : "Sent Packet";
 
-            string eventName = record.packetDestination == GameRecordPacket.PacketDestination.Client ? "Received Packet" : "Sent Packet";
+            // build the row
+            // row: icon | number, time, record name, inner type, name, size
+            // TODO: add row caching!
+            string[] row = new string[6];
 
-            row[0] = eventName;
+            // plus 1 to skip internal metadata record
+            row[0] = (e.ItemIndex + 1).ToString();
             row[1] = string.Format("{0:0.000000}", time);
-            row[2] = bytes;
-            row[3] = record.packet.Count.ToString();
+            row[2] = recordName;
+            
+            row[5] = record.packet.Count.ToString();
 
+            string packetName = "";
+            string packetType = "";
+
+            // this shouldnt happen, but it might!
+            if(record.packet.Count < 2)
+            {
+                packetName = "Invalid Packet";
+            }
+            else
+            {
+                byte firstByte = record.packet[0];
+                byte secondByte = record.packet[1];
+
+                if(firstByte == 0)
+                {
+                    packetName = ((PlanetSideControlPacketOpcode)secondByte).ToString();
+                    packetType = "Control";
+                }
+                else
+                {
+                    packetName = ((PlanetSideGamePacketOpcode)firstByte).ToString();
+                    packetType = "Game";
+                }
+                    
+            }
+            
+            row[3] = packetType;
+            row[4] = packetName;
 
             e.Item = new ListViewItem(row);
             e.Item.ImageIndex = record.packetDestination == GameRecordPacket.PacketDestination.Server ? 0 : 1;

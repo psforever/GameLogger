@@ -199,7 +199,7 @@ namespace PSCap
         public static readonly PlanetSideGamePacketOpcode KeepAliveMessage = new PlanetSideGamePacketOpcode(186, "KeepAliveMessage");
         public static readonly PlanetSideGamePacketOpcode MapObjectStateBlockMessage = new PlanetSideGamePacketOpcode(187, "MapObjectStateBlockMessage");
         public static readonly PlanetSideGamePacketOpcode SnoopMsg = new PlanetSideGamePacketOpcode(188, "SnoopMsg");
-        public static readonly PlanetSideGamePacketOpcode UnknownMessage189 = new PlanetSideGamePacketOpcode(189, "UnknownMessage189");
+        public static readonly PlanetSideGamePacketOpcode PlayerStateMessageUpstream = new PlanetSideGamePacketOpcode(189, "PlayerStateMessageUpstream");
         public static readonly PlanetSideGamePacketOpcode PlayerStateShiftMessage = new PlanetSideGamePacketOpcode(190, "PlayerStateShiftMessage");
         public static readonly PlanetSideGamePacketOpcode ZipLineMessage = new PlanetSideGamePacketOpcode(191, "ZipLineMessage");
         public static readonly PlanetSideGamePacketOpcode CaptureFlagUpdateMessage = new PlanetSideGamePacketOpcode(192, "CaptureFlagUpdateMessage");
