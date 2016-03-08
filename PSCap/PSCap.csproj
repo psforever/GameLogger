@@ -101,7 +101,7 @@
     </Compile>
     <Compile Include="Log.cs" />
     <Compile Include="PipeServer.cs" />
-    <Compile Include="PlanetSideMessage.cs" />
+    <Compile Include="PlanetSideGamePacketOpcode.cs" />
     <Compile Include="ProcessCollectable.cs" />
     <Compile Include="ProcessScanner.cs" />
     <Compile Include="ListViewEx.cs">

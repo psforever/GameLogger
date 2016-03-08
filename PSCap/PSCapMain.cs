@@ -548,7 +548,7 @@ namespace PSCap
             GameRecordPacket record = i.Record as GameRecordPacket;
 
             string bytes = "";
-            bytes = ((PlanetSideMessageType)record.packet[0]).ToString();
+            bytes = ((PlanetSideGamePacketOpcode)record.packet[0]).ToString();
             //foreach (byte b in record.packet)
             //    bytes += string.Format("{0:X2} ", b);
 
@@ -603,7 +603,7 @@ namespace PSCap
                 RecordGame record = captureFile.getRecord(listView1.SelectedIndices[0]) as RecordGame;
                 GameRecordPacket gameRecord = record.Record as GameRecordPacket;
 
-                string name = ((PlanetSideMessageType)gameRecord.packet[0]).ToString();
+                string name = ((PlanetSideGamePacketOpcode)gameRecord.packet[0]).ToString();
                 string bytes = this.displayPacketData(gameRecord);
 
                 richTextBox1.AppendText(name + "\n");
