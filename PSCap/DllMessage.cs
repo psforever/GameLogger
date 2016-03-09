@@ -101,7 +101,7 @@ namespace PSCap
                     if (!decodeResult)
                         throw new InvalidOperationException();
                 }
-                catch(InvalidOperationException e)
+                catch(InvalidOperationException)
                 {
                     Log.Error("Failed to decode message: general decoding error");
                     return null;

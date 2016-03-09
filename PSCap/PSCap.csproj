@@ -93,6 +93,12 @@
       <DependentUpon>EditMetadata.cs</DependentUpon>
     </Compile>
     <Compile Include="GameRecord.cs" />
+    <Compile Include="HexDump.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="HexDump.Designer.cs">
+      <DependentUpon>HexDump.cs</DependentUpon>
+    </Compile>
     <Compile Include="HotkeysDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -123,12 +129,18 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Record.cs" />
+    <Compile Include="SyncBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Util.cs" />
     <EmbeddedResource Include="AboutBox.resx">
       <DependentUpon>AboutBox.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="EditMetadata.resx">
       <DependentUpon>EditMetadata.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="HexDump.resx">
+      <DependentUpon>HexDump.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="HotkeysDialog.resx">
       <DependentUpon>HotkeysDialog.cs</DependentUpon>

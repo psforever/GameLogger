@@ -327,7 +327,7 @@ namespace PSCap
                     saveAsToolStripMenuItem.Enabled = false;
                     copyToolStripMenuItem.Enabled = false;
                     openToolStripMenuItem.Enabled = true;
-                    this.displayPacketData(null);
+                    this.hexDump.Bytes = null;
 
                     setCaptureFileName("");
                     return;
@@ -339,7 +339,8 @@ namespace PSCap
                     saveAsToolStripMenuItem.Enabled = false;
                     copyToolStripMenuItem.Enabled = true;
                     openToolStripMenuItem.Enabled = false;
-                    this.displayPacketData(null);
+                    this.hexDump.Bytes = null;
+
                     return;
                 }
 
@@ -391,8 +392,8 @@ namespace PSCap
 
                     updateCaptureFileState();
                 }
-                
-                this.displayPacketData(null);
+
+                this.hexDump.Bytes = null;
             });
         }
 
@@ -620,112 +621,28 @@ namespace PSCap
                 Console.WriteLine("New selection " + s.ToString());
             }*/
 
-            richTextBox1.Clear();
-            richTextBox1.SelectionColor = Color.Green;
-            richTextBox1.AppendText("  "); // dont remove this if you want colors
+            //richTextBox1.Clear();
+            //richTextBox1.SelectionColor = Color.Green;
+            //richTextBox1.AppendText("  "); // dont remove this if you want colors
 
             if(listView1.SelectedIndices.Count == 0) {
-                this.displayPacketData(null);
-                richTextBox1.Text = ("No selection");
+                this.hexDump.Bytes = null;
+                //richTextBox1.Text = ("No selection");
             }
             else {
                 RecordGame record = captureFile.getRecord(listView1.SelectedIndices[0]) as RecordGame;
                 GameRecordPacket gameRecord = record.Record as GameRecordPacket;
 
                 string name = ((PlanetSideGamePacketOpcode)gameRecord.packet[0]).ToString();
-                string bytes = this.displayPacketData(gameRecord);
+                this.hexDump.Bytes = gameRecord.packet;
 
-                richTextBox1.AppendText(name + "\n");
-                richTextBox1.AppendText(bytes);
+                //richTextBox1.AppendText(name + "\n");
+                //richTextBox1.AppendText(bytes);
 
             }
         }
 
-        /// <summary>
-        ///     Parse and display hexadecimal strings and character strings from the packet's byte data.
-        /// </summary>
-        /// <param name="gameRecord">
-        ///     The game record packet.
-        /// </param>
-        /// <returns>
-        ///     The hexadecimal data as a string
-        /// </returns>
-        private string displayPacketData(GameRecordPacket gameRecord) {
-            // If there is no record, or no packet data in the record, blank the fields.
-            if(gameRecord == null || gameRecord.packet == null || gameRecord.packet.Count == 0) {
-                this.hexLineNumbers.Text =
-                this.hexDisplay.Text =
-                this.hexCharDisplay.Text = "";
-                return "";
-            }
-
-            // "lineNumbers" keeps track of the number of lines in the "formatted" and "converted" data.
-            // "normal" string is a simple spaced display of each byte turned into hex.
-            // "formatted" string is the display form of the "normal" string.  It's mostly the "normal" string.
-            // "converted" string is what the byte array looks like when converted to char data.
-            StringBuilder lineNumbers = new StringBuilder();
-            StringBuilder normal = new StringBuilder();
-            StringBuilder formatted = new StringBuilder();
-            StringBuilder converted = new StringBuilder();
-            int lineNo = 0;
-
-            // Iterate over packet data bytes.
-            List<byte> array = gameRecord.packet;
-            string newLine = System.Environment.NewLine;
-            for(int entry = 0, byteIndex = 0, byteLength = array.Count; byteIndex < byteLength; byteIndex++) {
-                byte b = array[byteIndex];
-                string decoded = string.Format("{0:X2} ", b);
-                normal.Append(decoded);
-                formatted.Append(decoded);
-                // Lifted directly from ByteViewer.DrawDump (source).
-                char c = Convert.ToChar(b);
-                if(CharIsPrintable(c))
-                    converted.Append(c);
-                else
-                    converted.Append(".");
-
-                entry++;
-                // Once we have displayed sixteen values, start a new line.
-                if(entry == 16) {
-                    formatted.Append(newLine);
-                    converted.Append(newLine);
-                    lineNumbers.Append( (lineNo.ToString().PadLeft(8, '0')) + newLine);
-                    lineNo += 10;
-                    entry = 0;
-                }
-                // An additional space between the first eight values and the latter eight values per line.
-                else if(entry == 8)
-                    formatted.Append(" ");
-                // This is the last line.
-                else if(byteIndex + 1 == byteLength)
-                    lineNumbers.Append( (lineNo.ToString().PadLeft(8, '0')) );
-                
-            }
-
-            // Display resulting data in appropriate fields.
-            this.hexLineNumbers.Text = lineNumbers.ToString();
-            this.hexDisplay.Text = formatted.ToString();
-            this.hexCharDisplay.Text = converted.ToString();
-
-            return normal.ToString();
-        }
-
-        /// <summary>
-        ///     Check if char data meets a set of criteria which defines that it can be properly displayed.
-        /// </summary>
-        /// <param name="c">
-        ///     A character to be tested.
-        /// </param>
-        /// <see cref="System.ComponentModel.Design.ByteViewer.CharIsPrintable"/>
-        /// <returns>
-        ///     True, if the character can be displayed; false, otherwise.
-        /// </returns>
-        private static bool CharIsPrintable(char c) {
-            UnicodeCategory uc = Char.GetUnicodeCategory(c);
-            return (!(uc == UnicodeCategory.Control) || (uc == UnicodeCategory.Format) ||
-                    (uc == UnicodeCategory.LineSeparator) || (uc == UnicodeCategory.ParagraphSeparator) ||
-                    (uc == UnicodeCategory.OtherNotAssigned));
-        }
+      
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {

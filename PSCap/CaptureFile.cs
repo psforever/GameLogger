@@ -299,7 +299,7 @@ namespace PSCap
                     Record rec = Record.Factory.Decode(streamBuffer);
                     return rec;
                 }
-                catch (NeedMoreDataException e)
+                catch (NeedMoreDataException)
                 {
                     // undo any failed processing
                     streamBuffer.seek(startPos);
