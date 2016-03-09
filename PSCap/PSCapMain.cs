@@ -87,6 +87,14 @@ namespace PSCap
 
             setCaptureFile(captureFile);
             initListView();
+
+            // handle a drag on to the EXE file
+            string[] args = Environment.GetCommandLineArgs();
+
+            if(args.Length > 1)
+            {
+                openCaptureFile(args[1]);
+            }
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -563,6 +571,7 @@ namespace PSCap
 
             string packetName = "";
             string packetType = "";
+            Color backColor = Color.White;
 
             // this shouldnt happen, but it might!
             if(record.packet.Count < 2)
@@ -578,11 +587,13 @@ namespace PSCap
                 {
                     packetName = ((PlanetSideControlPacketOpcode)secondByte).ToString();
                     packetType = "Control";
+                    //backColor = Color.FromArgb(200, 230, 240);
                 }
                 else
                 {
                     packetName = ((PlanetSideGamePacketOpcode)firstByte).ToString();
                     packetType = "Game";
+                    backColor = Color.FromArgb(200, 240, 220);
                 }
                     
             }
@@ -591,6 +602,7 @@ namespace PSCap
             row[4] = packetName;
 
             e.Item = new ListViewItem(row);
+            e.Item.BackColor = backColor;
             e.Item.ImageIndex = record.packetDestination == GameRecordPacket.PacketDestination.Server ? 0 : 1;
         }
 
@@ -870,6 +882,11 @@ namespace PSCap
 
         private async void openToolStripMenuItem_Click(object sender, EventArgs evt)
         {
+            openCaptureFile("");
+        }
+
+        private async void openCaptureFile(string filename)
+        {
             if (captureFile != null && captureFile.isModified())
             {
                 DialogResult result = MessageBox.Show("You have an unsaved capture file. Would you like to save it before opening capture?",
@@ -886,36 +903,45 @@ namespace PSCap
 
             Log.Info("Open capture");
 
-            OpenFileDialog openFile = new OpenFileDialog();
-            openFile.AddExtension = true;
-            openFile.Filter = "Game Capture Files (*.gcap)|*.gcap|All Files (*.*)|*.*";
-
-            if (openFile.ShowDialog() == DialogResult.OK)
+            if (filename == "")
             {
-                BackgroundWorker worker = new BackgroundWorker();
-                ProgressDialog progress = new ProgressDialog("Loading capture file");
-                progress.ProgressTemplate("Loading records {value}/{max}...");
+                OpenFileDialog openFile = new OpenFileDialog();
+                openFile.AddExtension = true;
+                openFile.Filter = "Game Capture Files (*.gcap)|*.gcap|All Files (*.*)|*.*";
 
-                // NOTE: hack alert. BeginInvoke merely posts this to the message pump
-                this.BeginInvoke(new Action(() => progress.ShowDialog()));
-
-                await Task.Run(delegate
+                if (openFile.ShowDialog() == DialogResult.OK)
                 {
-                    try
-                    {
-                        CaptureFile newCapFile = CaptureFile.Factory.FromFile(openFile.FileName, this, progress);
-                        setCaptureFile(newCapFile);
-                    }
-                    catch (InvalidCaptureFileException e)
-                    {
-                        Log.Debug("Failed to open capture file: {0}", e.Message);
-                        MessageBox.Show(e.Message, "Could not open capture file",
-                            MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-
-                    this.SafeInvoke((a) => progress.Done());
-                });
+                    filename = openFile.FileName;
+                }
+                else
+                {
+                    return;
+                }
             }
+           
+            BackgroundWorker worker = new BackgroundWorker();
+            ProgressDialog progress = new ProgressDialog("Loading capture file");
+            progress.ProgressTemplate("Loading records {value}/{max}...");
+
+            // NOTE: hack alert. BeginInvoke merely posts this to the message pump
+            this.BeginInvoke(new Action(() => progress.ShowDialog()));
+
+            await Task.Run(delegate
+            {
+                try
+                {
+                    CaptureFile newCapFile = CaptureFile.Factory.FromFile(filename, this, progress);
+                    setCaptureFile(newCapFile);
+                }
+                catch (InvalidCaptureFileException e)
+                {
+                    Log.Debug("Failed to open capture file: {0}", e.Message);
+                    MessageBox.Show(e.Message, "Could not open capture file",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                this.SafeInvoke((a) => progress.Done());
+            });
         }
 
         private void saveAsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -959,6 +985,19 @@ namespace PSCap
         {
             HotkeysDialog dialog = new HotkeysDialog();
             dialog.ShowDialog();
+        }
+
+        private void PSCapMain_DragDrop(object sender, DragEventArgs e)
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop, false);
+
+            if (files.Length > 0)
+                openCaptureFile(files[0]);
+        }
+
+        private void PSCapMain_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
         }
     }
 }
