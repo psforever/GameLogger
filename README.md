@@ -8,7 +8,7 @@ Multiple loggers (at max 5) can run simultaneously on different instances of the
 
 Created to assist the [PSForever](http://psforever.net/) project.
 
-![GameLogger Animated](http://i.imgur.com/FLnbzAy.gifv)
+![GameLogger Animated](http://i.imgur.com/FLnbzAy.gif)
 
 ## Notable Features
 * Automatic DLL injection using `CreateRemoteThread`
