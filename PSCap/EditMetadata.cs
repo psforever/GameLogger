@@ -24,6 +24,8 @@ namespace PSCap
         {
             InitializeComponent();
 
+            this.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+
             captureDescriptionField.GotFocus += new EventHandler(RemoveText);
             captureDescriptionField.LostFocus += new EventHandler(AddText);
 

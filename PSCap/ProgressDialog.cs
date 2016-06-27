@@ -17,6 +17,9 @@ namespace PSCap
         public ProgressDialog(string title)
         {
             InitializeComponent();
+
+            this.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+
             Text = title;
             label1.Text = "";
         }

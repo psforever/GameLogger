@@ -16,10 +16,12 @@ namespace PSCap
         NamedPipeServerStream pipeServer;
         public string PipeName { get; }
         bool serverStarted = false;
+        private byte[] pipeBuffer;
 
         public PipeServer(string listeningPipe)
         {
             this.PipeName = listeningPipe;
+            this.pipeBuffer = new byte[100000];
         }
 
         public bool start()
@@ -105,6 +107,8 @@ namespace PSCap
 
                 do
                 {
+                    Log.Debug("ReadMessage start", outBuf.Count);
+
                     int readAmount = 0;
                     var asyncResult = pipeServer.BeginRead(tmpBuf, 0, tmpBuf.Length, null, null);
 
@@ -115,8 +119,9 @@ namespace PSCap
 
                     if (readAmount == 0)
                         break;
-
+                    
                     outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(tmpBuf, 0, readAmount)));
+                    Log.Debug("ReadMessage total {0}", outBuf.Count);
                     messageSize += readAmount;
                 } while (!pipeServer.IsMessageComplete);
 
@@ -142,19 +147,18 @@ namespace PSCap
             {
                 try
                 {
-                    List<byte> outBuf = new List<byte>(100);
+                    List<byte> outBuf = new List<byte>(1000);
 
                     int messageSize = 0;
-                    byte[] tmpBuf = new byte[100];
 
                     do
                     {
-                        int readAmount = await pipeServer.ReadAsync(tmpBuf, 0, tmpBuf.Length, token);
+                        int readAmount = await pipeServer.ReadAsync(pipeBuffer, 0, pipeBuffer.Length, token);
 
                         if (readAmount == 0)
                             break;
 
-                        outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(tmpBuf, 0, readAmount)));
+                        outBuf.AddRange(new SegmentEnumerable(new ArraySegment<byte>(pipeBuffer, 0, readAmount)));
                         messageSize += readAmount;
                     } while (!pipeServer.IsMessageComplete);
 

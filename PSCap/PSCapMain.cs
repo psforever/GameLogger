@@ -33,10 +33,9 @@ namespace PSCap
             Capturing,
         }
 
-
         // bump these when editing DllMessages or capture records
         public const byte GAME_LOGGER_MAJOR_VERSION = 1;
-        public const byte GAME_LOGGER_MINOR_VERSION = 1;
+        public const byte GAME_LOGGER_MINOR_VERSION = 2;
 
         const string NO_INSTANCE_PLACEHOLDER = "No instances";
         ProcessScanner scanner = new ProcessScanner("PlanetSide");
@@ -55,6 +54,8 @@ namespace PSCap
         {
             this.loggerId = loggerId;
             InitializeComponent();
+
+            this.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
 
             // required for hotkey hooking with key modifiers
             this.KeyPreview = true;

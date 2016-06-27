@@ -14,6 +14,9 @@ namespace PSCap
         public AboutBox()
         {
             InitializeComponent();
+
+            this.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+
             this.Text = String.Format("About {0}", AssemblyTitle);
             this.appVersion.Text = String.Format("GameLogger {0}, Capture File {1}.{2}, DLL {3}.{4}",
                 AssemblyVersion, CaptureFile.VERSION_MAJOR, CaptureFile.VERSION_MINOR,

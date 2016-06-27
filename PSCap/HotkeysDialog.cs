@@ -15,6 +15,8 @@ namespace PSCap
         public HotkeysDialog()
         {
             InitializeComponent();
+
+            this.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
         }
 
         private void button1_Click(object sender, EventArgs e)
