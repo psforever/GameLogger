@@ -31,6 +31,8 @@
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PSCapMain));
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.listView1 = new PSCap.ListViewEx();
+            this.hexDump = new PSCap.HexDump();
             this.richTextBox1 = new System.Windows.Forms.RichTextBox();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -63,8 +65,7 @@
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.capturePauseButton = new System.Windows.Forms.ToolStripButton();
             this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
-            this.listView1 = new PSCap.ListViewEx();
-            this.hexDump = new PSCap.HexDump();
+            this.preferencesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -96,6 +97,33 @@
             this.splitContainer1.Size = new System.Drawing.Size(771, 291);
             this.splitContainer1.SplitterDistance = 137;
             this.splitContainer1.TabIndex = 2;
+            // 
+            // listView1
+            // 
+            this.listView1.AllowColumnReorder = true;
+            this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listView1.FullRowSelect = true;
+            this.listView1.Location = new System.Drawing.Point(0, 0);
+            this.listView1.MultiSelect = false;
+            this.listView1.Name = "listView1";
+            this.listView1.ScrollPosition = 0;
+            this.listView1.Size = new System.Drawing.Size(771, 137);
+            this.listView1.TabIndex = 0;
+            this.listView1.UseCompatibleStateImageBehavior = false;
+            this.listView1.onScroll += new System.Windows.Forms.ScrollEventHandler(this.listView1_OnScroll);
+            this.listView1.RetrieveVirtualItem += new System.Windows.Forms.RetrieveVirtualItemEventHandler(this.listView1_RetrieveVirtualItem);
+            this.listView1.SelectedIndexChanged += new System.EventHandler(this.listView1_SelectedIndexChanged);
+            // 
+            // hexDump
+            // 
+            this.hexDump.Bytes = null;
+            this.hexDump.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.hexDump.Location = new System.Drawing.Point(0, 0);
+            this.hexDump.Margin = new System.Windows.Forms.Padding(3, 3, 5, 3);
+            this.hexDump.Name = "hexDump";
+            this.hexDump.Padding = new System.Windows.Forms.Padding(1);
+            this.hexDump.Size = new System.Drawing.Size(771, 150);
+            this.hexDump.TabIndex = 1;
             // 
             // richTextBox1
             // 
@@ -182,7 +210,8 @@
             // editToolStripMenuItem
             // 
             this.editToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.copyToolStripMenuItem});
+            this.copyToolStripMenuItem,
+            this.preferencesToolStripMenuItem});
             this.editToolStripMenuItem.Name = "editToolStripMenuItem";
             this.editToolStripMenuItem.Size = new System.Drawing.Size(39, 20);
             this.editToolStripMenuItem.Text = "&Edit";
@@ -191,7 +220,7 @@
             // 
             this.copyToolStripMenuItem.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.copyToolStripMenuItem.Name = "copyToolStripMenuItem";
-            this.copyToolStripMenuItem.Size = new System.Drawing.Size(133, 22);
+            this.copyToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
             this.copyToolStripMenuItem.Text = "Metadata...";
             this.copyToolStripMenuItem.Click += new System.EventHandler(this.copyToolStripMenuItem_Click);
             // 
@@ -202,7 +231,7 @@
             this.optionsToolStripMenuItem});
             this.toolsToolStripMenuItem.Enabled = false;
             this.toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
-            this.toolsToolStripMenuItem.Size = new System.Drawing.Size(47, 20);
+            this.toolsToolStripMenuItem.Size = new System.Drawing.Size(48, 20);
             this.toolsToolStripMenuItem.Text = "&Tools";
             this.toolsToolStripMenuItem.Visible = false;
             // 
@@ -377,32 +406,12 @@
             this.capturePauseButton.Text = "Capture";
             this.capturePauseButton.Click += new System.EventHandler(this.capturePauseButton_Click);
             // 
-            // listView1
+            // preferencesToolStripMenuItem
             // 
-            this.listView1.AllowColumnReorder = true;
-            this.listView1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.listView1.FullRowSelect = true;
-            this.listView1.Location = new System.Drawing.Point(0, 0);
-            this.listView1.MultiSelect = false;
-            this.listView1.Name = "listView1";
-            this.listView1.ScrollPosition = 0;
-            this.listView1.Size = new System.Drawing.Size(771, 137);
-            this.listView1.TabIndex = 0;
-            this.listView1.UseCompatibleStateImageBehavior = false;
-            this.listView1.onScroll += new System.Windows.Forms.ScrollEventHandler(this.listView1_OnScroll);
-            this.listView1.RetrieveVirtualItem += new System.Windows.Forms.RetrieveVirtualItemEventHandler(this.listView1_RetrieveVirtualItem);
-            this.listView1.SelectedIndexChanged += new System.EventHandler(this.listView1_SelectedIndexChanged);
-            // 
-            // hexDump
-            // 
-            this.hexDump.Bytes = null;
-            this.hexDump.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.hexDump.Location = new System.Drawing.Point(0, 0);
-            this.hexDump.Margin = new System.Windows.Forms.Padding(3, 3, 5, 3);
-            this.hexDump.Name = "hexDump";
-            this.hexDump.Padding = new System.Windows.Forms.Padding(1);
-            this.hexDump.Size = new System.Drawing.Size(771, 150);
-            this.hexDump.TabIndex = 1;
+            this.preferencesToolStripMenuItem.Name = "preferencesToolStripMenuItem";
+            this.preferencesToolStripMenuItem.Size = new System.Drawing.Size(152, 22);
+            this.preferencesToolStripMenuItem.Text = "Preferences";
+            this.preferencesToolStripMenuItem.Click += new System.EventHandler(this.preferencesToolStripMenuItem_Click);
             // 
             // PSCapMain
             // 
@@ -475,6 +484,7 @@
         private System.ComponentModel.BackgroundWorker backgroundWorker1;
         private System.Windows.Forms.ToolStripMenuItem hotkeysToolStripMenuItem;
         private HexDump hexDump;
+        private System.Windows.Forms.ToolStripMenuItem preferencesToolStripMenuItem;
     }
 }
 
