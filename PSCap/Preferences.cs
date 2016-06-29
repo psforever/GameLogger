@@ -16,6 +16,7 @@ namespace PSCap
         public Preferences()
         {
             InitializeComponent();
+            AbsoluteTimeStampCbx.Checked = Settings.Default.AbsoluteTimeStamp;
         }
 
         private void AbsoluteTimeStampCbx_CheckedChanged(object sender, EventArgs e)

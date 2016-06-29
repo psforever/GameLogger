@@ -36,6 +36,8 @@
             // AbsoluteTimeStampCbx
             // 
             this.AbsoluteTimeStampCbx.AutoSize = true;
+            this.AbsoluteTimeStampCbx.Checked = true;
+            this.AbsoluteTimeStampCbx.CheckState = System.Windows.Forms.CheckState.Checked;
             this.AbsoluteTimeStampCbx.Location = new System.Drawing.Point(12, 12);
             this.AbsoluteTimeStampCbx.Name = "AbsoluteTimeStampCbx";
             this.AbsoluteTimeStampCbx.Size = new System.Drawing.Size(121, 17);
