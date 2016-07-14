@@ -1,4 +1,5 @@
-﻿using System;
+﻿using PSCap.Properties;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Design;
@@ -15,7 +16,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PSCap
-{ 
+{
     public partial class PSCapMain : Form
     {
         enum DisableProcessSelectionReason
@@ -48,6 +49,8 @@ namespace PSCap
         bool followLast = true;
         int loggerId = 0;
 
+        DateTime unixDate = new DateTime(1970, 1, 1, CultureInfo.CurrentCulture.Calendar);
+
         private UIState currentUIState = UIState.Detached;
 
         public PSCapMain(int loggerId)
@@ -78,7 +81,7 @@ namespace PSCap
                 MessageBox.Show("Failed to create log file: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            scanner.ProcessListUpdate += new EventHandler<Process []>(processList_update);
+            scanner.ProcessListUpdate += new EventHandler<Process[]>(processList_update);
             captureLogic.AttachedProcessExited += new AttachedProcessExited(attachedProcessExited);
             captureLogic.NewEvent += new NewEventCallback(newUIEvent);
             captureLogic.OnNewRecord += new NewGameRecord(newRecord);
@@ -100,30 +103,30 @@ namespace PSCap
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (e.CloseReason == CloseReason.ApplicationExitCall)
+            if(e.CloseReason == CloseReason.ApplicationExitCall)
                 return;
 
             // TODO: handle the cases where we are attached, capturing, or have an unsaved capture
-            if (captureFile != null && captureFile.isModified())
+            if(captureFile != null && captureFile.isModified())
             {
                 DialogResult result = MessageBox.Show("You have an unsaved capture file. Would you like to save it before exiting?",
                     "Save capture file", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
 
-                if (result == DialogResult.Yes)
+                if(result == DialogResult.Yes)
                 {
-                    if (captureLogic.isCapturing())
+                    if(captureLogic.isCapturing())
                         captureLogic.stopCapture();
 
                     bool canceled;
                     saveCaptureFile(out canceled);
 
-                    if (canceled)
+                    if(canceled)
                     {
                         e.Cancel = true;
                     }
 
                 }
-                else if (result == DialogResult.Cancel)
+                else if(result == DialogResult.Cancel)
                 {
                     e.Cancel = true;
                 }
@@ -143,7 +146,7 @@ namespace PSCap
             switch(keyData)
             {
                 case Keys.F9:
-                    if (capturePauseButton.Enabled)
+                    if(capturePauseButton.Enabled)
                         capturePauseButton_Click(this, new EventArgs());
                     return true;
                 default:
@@ -179,7 +182,7 @@ namespace PSCap
         {
             List<Record> newItems = new List<Record>(recs.Count);
 
-            foreach (GameRecord gameRec in recs)
+            foreach(GameRecord gameRec in recs)
             {
                 Record rec = Record.Factory.Create(RecordType.GAME);
 
@@ -191,12 +194,12 @@ namespace PSCap
                         gameRecord.setRecord(record);
 
                         /// XXX: nasty hack to prevent password disclosures
-                        byte [] sensitive = { 0x00, 0x09, 0x00, 0x00, 0x01, 0x03 };
+                        byte[] sensitive = { 0x00, 0x09, 0x00, 0x00, 0x01, 0x03 };
                         int i = 0;
 
                         for(i = 0; i < record.packet.Count && i < sensitive.Length; i++)
                         {
-                            if (record.packet[i] != sensitive[i])
+                            if(record.packet[i] != sensitive[i])
                                 break;
                         }
 
@@ -283,7 +286,7 @@ namespace PSCap
         {
             this.SafeInvoke(delegate
             {
-                if (list.Length == 0)
+                if(list.Length == 0)
                 {
                     disableProcessSelection(DisableProcessSelectionReason.NoInstances);
                     return;
@@ -293,13 +296,13 @@ namespace PSCap
                 // clear list, refill it, select first item, enable selection
                 toolStripInstance.Items.Clear();
 
-                foreach (Process p in list)
+                foreach(Process p in list)
                 {
                     toolStripInstance.Items.Add(new ProcessCollectable(p));
                 }
 
                 // select the last item as a convienience
-                if (lastSelectedInstanceIndex < list.Length && lastSelectedInstanceIndex >= 0)
+                if(lastSelectedInstanceIndex < list.Length && lastSelectedInstanceIndex >= 0)
                     toolStripInstance.SelectedIndex = lastSelectedInstanceIndex;
                 else
                     toolStripInstance.SelectedIndex = 0;
@@ -330,7 +333,7 @@ namespace PSCap
         {
             this.SafeInvoke(delegate
             {
-                if (captureFile == null)
+                if(captureFile == null)
                 {
                     saveToolStripMenuItem.Enabled = false;
                     saveAsToolStripMenuItem.Enabled = false;
@@ -342,7 +345,7 @@ namespace PSCap
                     return;
                 }
 
-                if (currentUIState == UIState.Capturing)
+                if(currentUIState == UIState.Capturing)
                 {
                     saveToolStripMenuItem.Enabled = false;
                     saveAsToolStripMenuItem.Enabled = false;
@@ -355,7 +358,7 @@ namespace PSCap
 
                 string filename = Path.GetFileName(captureFile.getCaptureFilename());
 
-                if (captureFile.isModified())
+                if(captureFile.isModified())
                 {
                     saveToolStripMenuItem.Enabled = true;
                     filename += " (modified)";
@@ -381,7 +384,7 @@ namespace PSCap
                 // must be set before
                 captureFile = cap;
 
-                if (cap == null)
+                if(cap == null)
                 {
                     // set the estimate before updating the record count
                     setRecordSizeEstimate(0);
@@ -393,7 +396,7 @@ namespace PSCap
                 {
                     ulong estimatedSize = 0;
 
-                    foreach (Record r in cap.getRecords())
+                    foreach(Record r in cap.getRecords())
                         estimatedSize += r.size;
 
                     setRecordSizeEstimate(estimatedSize);
@@ -411,10 +414,10 @@ namespace PSCap
             this.SafeInvoke(delegate
             {
                 listView1.SetVirtualListSize(count);
-                if (followLast)
+                if(followLast)
                     scrollToEnd();
 
-                if (count == 0)
+                if(count == 0)
                 {
                     recordCountLabel.Visible = false;
                     toolStripStatus.BorderSides = ToolStripStatusLabelBorderSides.None;
@@ -435,7 +438,7 @@ namespace PSCap
         {
             this.SafeInvoke(delegate
             {
-                if (string.Empty == name)
+                if(string.Empty == name)
                     captureFileLabel.Text = "No capture file";
                 else
                     captureFileLabel.Text = name;
@@ -446,7 +449,7 @@ namespace PSCap
         {
             currentUIState = state;
 
-            switch (state)
+            switch(state)
             {
                 case UIState.Detached:
                     Log.Info("UIState Detached");
@@ -493,7 +496,7 @@ namespace PSCap
                         capturePauseButton.Image = Properties.Resources.StatusAnnotations_Play_16xLG_color;
                         capturePauseButton.Text = "Capture";
                         capturePauseButton.Enabled = true;
-                        
+
                         toolStripAttachButton.Text = "Detach";
                         toolStripAttachButton.Enabled = true;
 
@@ -548,12 +551,10 @@ namespace PSCap
                     listView1.EnsureVisible(listView1.Items.Count - 1);
                 });
         }
-        
+
         private void listView1_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
-            RecordGame i = captureFile.getRecord(e.ItemIndex) as RecordGame;
-
-            double time = i.getSecondsSinceStart((uint)captureFile.getStartTime());
+            RecordGame i = captureFile.getRecord(e.ItemIndex) as RecordGame;            
             GameRecordPacket record = i.Record as GameRecordPacket;
 
             string recordName = record.packetDestination == GameRecordPacket.PacketDestination.Client ? "Received Packet" : "Sent Packet";
@@ -565,9 +566,22 @@ namespace PSCap
 
             // plus 1 to skip internal metadata record
             row[0] = (e.ItemIndex + 1).ToString();
-            row[1] = string.Format("{0:0.000000}", time);
+
+            string timestamp;
+            if(Settings.Default.AbsoluteTimeStamp)
+            {
+                ulong recordTimeInSeconds = captureFile.getStartTime() + (i.Record.getRecordTime() / 1000000);
+                DateTime recordTimestamp = unixDate.Add(TimeSpan.FromSeconds(recordTimeInSeconds)).ToLocalTime();
+                timestamp = recordTimestamp.ToString("h:mm:ss");
+            }
+            else
+            {
+                double time = i.getSecondsSinceStart((uint)captureFile.getStartTime());
+                timestamp = string.Format("{0:0.000000}", time);
+            }
+            row[1] = timestamp;
             row[2] = recordName;
-            
+
             row[5] = record.packet.Count.ToString();
 
             string packetName = "";
@@ -596,9 +610,9 @@ namespace PSCap
                     packetType = "Game";
                     backColor = Color.FromArgb(200, 240, 220);
                 }
-                    
+
             }
-            
+
             row[3] = packetType;
             row[4] = packetName;
 
@@ -610,25 +624,26 @@ namespace PSCap
         private void listView1_OnScroll(object sender, ScrollEventArgs e)
         {
             int itemHeight;
-            
-            if (listView1.VirtualListSize == 0)
+
+            if(listView1.VirtualListSize == 0)
                 itemHeight = 0;
             else
                 itemHeight = listView1.GetItemRect(0).Height;
 
-            if (itemHeight == 0) // bad!
+            if(itemHeight == 0) // bad!
                 return;
 
             // mad hax
             int itemsDisplayed = listView1.DisplayRectangle.Height / itemHeight;
-            
-            if (e.NewValue + itemsDisplayed >= listView1.VirtualListSize)
+
+            if(e.NewValue + itemsDisplayed >= listView1.VirtualListSize)
                 followLast = true;
             else
                 followLast = false;
         }
 
-        private void listView1_SelectedIndexChanged(object sender, EventArgs e) {
+        private void listView1_SelectedIndexChanged(object sender, EventArgs e)
+        {
             /*foreach(var s in listView1.SelectedIndices)
             {
                 Console.WriteLine("New selection " + s.ToString());
@@ -638,11 +653,13 @@ namespace PSCap
             //richTextBox1.SelectionColor = Color.Green;
             //richTextBox1.AppendText("  "); // dont remove this if you want colors
 
-            if(listView1.SelectedIndices.Count == 0) {
+            if(listView1.SelectedIndices.Count == 0)
+            {
                 this.hexDump.Bytes = null;
                 //richTextBox1.Text = ("No selection");
             }
-            else {
+            else
+            {
                 RecordGame record = captureFile.getRecord(listView1.SelectedIndices[0]) as RecordGame;
                 GameRecordPacket gameRecord = record.Record as GameRecordPacket;
 
@@ -655,7 +672,7 @@ namespace PSCap
             }
         }
 
-      
+
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -676,12 +693,12 @@ namespace PSCap
                     DialogResult result = MessageBox.Show("You have an unsaved capture file. Would you like to save it before starting a new capture?",
                         "Save capture file", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
 
-                    if (result == DialogResult.Yes)
+                    if(result == DialogResult.Yes)
                     {
-                        if (!saveCaptureFile())
+                        if(!saveCaptureFile())
                             return;
                     }
-                    else if (result == DialogResult.Cancel)
+                    else if(result == DialogResult.Cancel)
                         return;
                 }
 
@@ -703,7 +720,7 @@ namespace PSCap
                 return;
             }
 
-            switch (evt)
+            switch(evt)
             {
                 case EventNotification.Attached:
                     enterUIState(UIState.Attached);
@@ -762,7 +779,7 @@ namespace PSCap
 
                 return true;
             }
-            catch (IOException e)
+            catch(IOException e)
             {
                 Log.Debug("Failed to save capture file: {0}", e.Message);
                 MessageBox.Show(e.Message,
@@ -775,8 +792,8 @@ namespace PSCap
         {
             Log.Info("Save capture file");
 
-            if (captureFile.isFirstSave())
-                if (!showEditMetadata())
+            if(captureFile.isFirstSave())
+                if(!showEditMetadata())
                 {
                     canceled = true;
                     return false;
@@ -793,7 +810,7 @@ namespace PSCap
 
             DialogResult result = saveFile.ShowDialog();
 
-            if (result == DialogResult.OK)
+            if(result == DialogResult.OK)
             {
                 return doSaveCaptureFile(saveFile.FileName);
             }
@@ -818,7 +835,7 @@ namespace PSCap
             }
             else
             {
-                if (!isProcessSelected())
+                if(!isProcessSelected())
                 {
                     Trace.Assert(false, "Attemped to attach without first selecting a process");
                     return;
@@ -829,7 +846,7 @@ namespace PSCap
                 ProcessCollectable targetProcess = new ProcessCollectable(Process.GetCurrentProcess());
 #endif
 
-                if (targetProcess == null)
+                if(targetProcess == null)
                 {
                     MessageBox.Show("Target process target was NULL", "Unknown Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
@@ -840,7 +857,7 @@ namespace PSCap
                 captureLogic.attach(targetProcess,
                     (okay, attachResult, message) =>
                     {
-                        if (okay)
+                        if(okay)
                         {
                             enterUIState(UIState.Attached);
                             return;
@@ -848,12 +865,12 @@ namespace PSCap
 
                         enterUIState(UIState.Detached);
 
-                        if (attachResult == AttachResult.PipeServerStartup)
+                        if(attachResult == AttachResult.PipeServerStartup)
                         {
                             DialogResult res = MessageBox.Show(message + Environment.NewLine + "Would you like to end the offending process?"
                                 , "Failed to Attach", MessageBoxButtons.YesNo, MessageBoxIcon.Error);
 
-                            if (res == DialogResult.Yes)
+                            if(res == DialogResult.Yes)
                             {
                                 targetProcess.Process.Refresh();
 
@@ -869,13 +886,13 @@ namespace PSCap
                             MessageBox.Show(message, "Failed to Attach", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                     });
-                    
+
             }
         }
 
         private void saveToolStripMenuItem_Click(object sender, EventArgs evt)
         {
-            if (captureFile.isFirstSave())
+            if(captureFile.isFirstSave())
                 saveCaptureFile();
             else
                 doSaveCaptureFile(captureFile.getCaptureFilename());
@@ -888,29 +905,29 @@ namespace PSCap
 
         private async void openCaptureFile(string filename)
         {
-            if (captureFile != null && captureFile.isModified())
+            if(captureFile != null && captureFile.isModified())
             {
                 DialogResult result = MessageBox.Show("You have an unsaved capture file. Would you like to save it before opening capture?",
                     "Save capture file", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
 
-                if (result == DialogResult.Yes)
+                if(result == DialogResult.Yes)
                 {
-                    if (!saveCaptureFile())
+                    if(!saveCaptureFile())
                         return;
                 }
-                else if (result == DialogResult.Cancel)
+                else if(result == DialogResult.Cancel)
                     return;
             }
 
             Log.Info("Open capture");
 
-            if (filename == "")
+            if(filename == "")
             {
                 OpenFileDialog openFile = new OpenFileDialog();
                 openFile.AddExtension = true;
                 openFile.Filter = "Game Capture Files (*.gcap)|*.gcap|All Files (*.*)|*.*";
 
-                if (openFile.ShowDialog() == DialogResult.OK)
+                if(openFile.ShowDialog() == DialogResult.OK)
                 {
                     filename = openFile.FileName;
                 }
@@ -919,7 +936,7 @@ namespace PSCap
                     return;
                 }
             }
-           
+
             BackgroundWorker worker = new BackgroundWorker();
             ProgressDialog progress = new ProgressDialog("Loading capture file");
             progress.ProgressTemplate("Loading records {value}/{max}...");
@@ -934,7 +951,7 @@ namespace PSCap
                     CaptureFile newCapFile = CaptureFile.Factory.FromFile(filename, this, progress);
                     setCaptureFile(newCapFile);
                 }
-                catch (InvalidCaptureFileException e)
+                catch(InvalidCaptureFileException e)
                 {
                     Log.Debug("Failed to open capture file: {0}", e.Message);
                     MessageBox.Show(e.Message, "Could not open capture file",
@@ -964,7 +981,7 @@ namespace PSCap
             EditMetadata editMeta = new EditMetadata(captureFile);
             DialogResult result = editMeta.ShowDialog(this);
 
-            if (result == DialogResult.OK)
+            if(result == DialogResult.OK)
             {
                 captureFile.setCaptureName(editMeta.CaptureNameResult);
                 captureFile.setCaptureDescription(editMeta.DescriptionResult);
@@ -973,7 +990,7 @@ namespace PSCap
 
                 return true;
             }
-            
+
             return false;
         }
 
@@ -992,13 +1009,19 @@ namespace PSCap
         {
             string[] files = (string[])e.Data.GetData(DataFormats.FileDrop, false);
 
-            if (files.Length > 0)
+            if(files.Length > 0)
                 openCaptureFile(files[0]);
         }
 
         private void PSCapMain_DragEnter(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
+            if(e.Data.GetDataPresent(DataFormats.FileDrop)) e.Effect = DragDropEffects.Copy;
+        }
+
+        private void preferencesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Preferences preferences = new Preferences();
+            DialogResult result = preferences.ShowDialog(this); // Don't really care about result.
         }
     }
 }

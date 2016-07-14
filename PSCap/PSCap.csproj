@@ -112,6 +112,12 @@
     <Compile Include="PipeServer.cs" />
     <Compile Include="PlanetSideControlPacketOpcode.cs" />
     <Compile Include="PlanetSideGamePacketOpcode.cs" />
+    <Compile Include="Preferences.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Preferences.Designer.cs">
+      <DependentUpon>Preferences.cs</DependentUpon>
+    </Compile>
     <Compile Include="ProcessCollectable.cs" />
     <Compile Include="ProcessScanner.cs" />
     <Compile Include="ListViewEx.cs">
@@ -148,6 +154,9 @@
     <EmbeddedResource Include="HotkeysDialog.resx">
       <DependentUpon>HotkeysDialog.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Preferences.resx">
+      <DependentUpon>Preferences.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="ProgressDialog.resx">
       <DependentUpon>ProgressDialog.cs</DependentUpon>
     </EmbeddedResource>
@@ -175,7 +184,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Image1.bmp" />
