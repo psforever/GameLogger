@@ -83,19 +83,19 @@
     <Compile Include="AboutBox.Designer.cs">
       <DependentUpon>AboutBox.cs</DependentUpon>
     </Compile>
-    <Compile Include="BitStream.cs" />
-    <Compile Include="CaptureFile.cs" />
-    <Compile Include="CaptureLogic.cs" />
-    <Compile Include="DllHandshake.cs" />
-    <Compile Include="DLLInjector.cs" />
-    <Compile Include="DllMessage.cs" />
+    <Compile Include="util\BitStream.cs" />
+    <Compile Include="capture\CaptureFile.cs" />
+    <Compile Include="capture\CaptureLogic.cs" />
+    <Compile Include="remote\DllHandshake.cs" />
+    <Compile Include="remote\DLLInjector.cs" />
+    <Compile Include="remote\DllMessage.cs" />
     <Compile Include="EditMetadata.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="EditMetadata.Designer.cs">
       <DependentUpon>EditMetadata.cs</DependentUpon>
     </Compile>
-    <Compile Include="GameRecord.cs" />
+    <Compile Include="capture\GameRecord.cs" />
     <Compile Include="HexDump.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -108,18 +108,18 @@
     <Compile Include="HotkeysDialog.Designer.cs">
       <DependentUpon>HotkeysDialog.cs</DependentUpon>
     </Compile>
-    <Compile Include="Log.cs" />
-    <Compile Include="PipeServer.cs" />
-    <Compile Include="PlanetSideControlPacketOpcode.cs" />
-    <Compile Include="PlanetSideGamePacketOpcode.cs" />
+    <Compile Include="util\Log.cs" />
+    <Compile Include="remote\PipeServer.cs" />
+    <Compile Include="planetside\PlanetSideControlPacketOpcode.cs" />
+    <Compile Include="planetside\PlanetSideGamePacketOpcode.cs" />
     <Compile Include="Preferences.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Preferences.Designer.cs">
       <DependentUpon>Preferences.cs</DependentUpon>
     </Compile>
-    <Compile Include="ProcessCollectable.cs" />
-    <Compile Include="ProcessScanner.cs" />
+    <Compile Include="util\ProcessCollectable.cs" />
+    <Compile Include="util\ProcessScanner.cs" />
     <Compile Include="ListViewEx.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -137,11 +137,11 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Record.cs" />
+    <Compile Include="capture\Record.cs" />
     <Compile Include="SyncBox.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Util.cs" />
+    <Compile Include="util\Util.cs" />
     <EmbeddedResource Include="AboutBox.resx">
       <DependentUpon>AboutBox.cs</DependentUpon>
     </EmbeddedResource>
@@ -236,6 +236,7 @@
   <ItemGroup>
     <Content Include="Resources\icon-green.ico" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
