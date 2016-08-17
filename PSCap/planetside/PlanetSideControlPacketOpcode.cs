@@ -15,10 +15,10 @@ namespace PSCap
         public static readonly PlanetSideControlPacketOpcode ServerStart = new PlanetSideControlPacketOpcode(2, "ServerStart");
         public static readonly PlanetSideControlPacketOpcode MultiPacket = new PlanetSideControlPacketOpcode(3, "MultiPacket");
         public static readonly PlanetSideControlPacketOpcode UnknownMessage4 = new PlanetSideControlPacketOpcode(4, "UnknownMessage4");
-        public static readonly PlanetSideControlPacketOpcode UnknownMessage5 = new PlanetSideControlPacketOpcode(5, "UnknownMessage5");
+        public static readonly PlanetSideControlPacketOpcode TeardownConnection = new PlanetSideControlPacketOpcode(5, "TeardownConnection");
         public static readonly PlanetSideControlPacketOpcode UnknownMessage6 = new PlanetSideControlPacketOpcode(6, "UnknownMessage6");
-        public static readonly PlanetSideControlPacketOpcode UnknownMessage7 = new PlanetSideControlPacketOpcode(7, "UnknownMessage7");
-        public static readonly PlanetSideControlPacketOpcode UnknownMessage8 = new PlanetSideControlPacketOpcode(8, "UnknownMessage8");
+        public static readonly PlanetSideControlPacketOpcode ControlSync = new PlanetSideControlPacketOpcode(7, "ControlSync");
+        public static readonly PlanetSideControlPacketOpcode ControlSyncResp = new PlanetSideControlPacketOpcode(8, "ControlSyncResp");
         public static readonly PlanetSideControlPacketOpcode SlottedMetaPacket0 = new PlanetSideControlPacketOpcode(9, "SlottedMetaPacket0");
         public static readonly PlanetSideControlPacketOpcode SlottedMetaPacket1 = new PlanetSideControlPacketOpcode(10, "SlottedMetaPacket1");
         public static readonly PlanetSideControlPacketOpcode SlottedMetaPacket2 = new PlanetSideControlPacketOpcode(11, "SlottedMetaPacket2");
@@ -35,7 +35,7 @@ namespace PSCap
         public static readonly PlanetSideControlPacketOpcode RelatedB1 = new PlanetSideControlPacketOpcode(22, "RelatedB1");
         public static readonly PlanetSideControlPacketOpcode RelatedB2 = new PlanetSideControlPacketOpcode(23, "RelatedB2");
         public static readonly PlanetSideControlPacketOpcode RelatedB3 = new PlanetSideControlPacketOpcode(24, "RelatedB3");
-        public static readonly PlanetSideControlPacketOpcode AggregatePacket = new PlanetSideControlPacketOpcode(25, "AggregatePacket");
+        public static readonly PlanetSideControlPacketOpcode MultiPacketEx = new PlanetSideControlPacketOpcode(25, "MultiPacketEx");
         public static readonly PlanetSideControlPacketOpcode UnknownMessage26 = new PlanetSideControlPacketOpcode(26, "UnknownMessage26");
         public static readonly PlanetSideControlPacketOpcode UnknownMessage27 = new PlanetSideControlPacketOpcode(27, "UnknownMessage27");
         public static readonly PlanetSideControlPacketOpcode UnknownMessage28 = new PlanetSideControlPacketOpcode(28, "UnknownMessage28");
