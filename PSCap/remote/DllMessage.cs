@@ -18,7 +18,6 @@ namespace PSCap
         STOP_CAPTURE, // Either
         STOP_CAPTURE_RESP, // Either
         NEW_RECORDS, // FROM
-        SCREENDATA // FROM
     }
 
     abstract class DllMessage
@@ -63,9 +62,6 @@ namespace PSCap
                         break;
                     case DllMessageType.NEW_RECORDS:
                         msg = new DllMessageNewRecords();
-                        break;
-                    case DllMessageType.SCREENDATA:
-                        msg = new DllMessageScreendata();
                         break;
                     default:
                         throw new ArgumentException(string.Format("DllMessage.Create: Unhandled DllMessage type {0}", type));
@@ -391,28 +387,6 @@ namespace PSCap
             }
 
             return outBytes;
-        }
-    }
-
-    class DllMessageScreendata : DllMessage
-    {
-        public List<Byte> data = new List<Byte>();
-
-        protected override bool decode(BitStream stream)
-        {
-            uint amount = BitOps.ReadUInt32(stream);
-
-            if (amount > stream.sizeLeft())
-                return false;
-
-            data = stream.extractOctetStream(amount);
-
-            return true;
-        }
-
-        protected override List<byte> encode()
-        {
-            return encodeNotImplemented();
         }
     }
 }

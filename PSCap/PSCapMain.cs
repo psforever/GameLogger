@@ -34,9 +34,10 @@ namespace PSCap
             Capturing,
         }
 
+
         // bump these when editing DllMessages or capture records
         public const byte GAME_LOGGER_MAJOR_VERSION = 1;
-        public const byte GAME_LOGGER_MINOR_VERSION = 2;
+        public const byte GAME_LOGGER_MINOR_VERSION = 1;
 
         const string NO_INSTANCE_PLACEHOLDER = "No instances";
         ProcessScanner scanner = new ProcessScanner("PlanetSide");

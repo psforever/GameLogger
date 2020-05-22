@@ -370,15 +370,6 @@ namespace PSCap
                     pendingMessageState = PendingMessageState.Attached;
                     break;
                 }
-                case DllMessageType.SCREENDATA:
-                {
-                        DllMessageScreendata m = msg as DllMessageScreendata;
-
-                        Log.Info("Got screendata of size {0}", m.data.Count);
-
-                        File.WriteAllBytes("test-screenshot.tga", m.data.ToArray());
-                        break;
-                }
             }
         }
 
