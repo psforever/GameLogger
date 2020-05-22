@@ -110,7 +110,7 @@ namespace PSCap
                         cap.unixTimeStart, cap.unixTimeEnd, cap.captureRevision, cap.GUID, header.RecordCount);
 
                     // print metadata and read records
-                    byte[] buffer = new byte[131072];
+                    byte[] buffer = new byte[1024*1024*10];
                     BitStream stream = new BitStream();
                     bool metaFound = false;
 
